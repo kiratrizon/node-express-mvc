@@ -50,12 +50,12 @@ app.use('/', userRouter);
 
 app.use('/api', apiRouter);
 
-app.get('/', (req, res) => {
-    res.redirect('/dashboard');
-});
-app.get('/admin', (req, res) => {
-    res.redirect('/admin/dashboard');
-});
+// app.get('/', (req, res) => {
+//     res.redirect('/dashboard');
+// });
+// app.get('/admin', (req, res) => {
+//     res.redirect('/admin/dashboard');
+// });
 
 
 app.get('/debug', (req, res) => {
