@@ -1,17 +1,20 @@
-const Validator = require("../../../libs/Middleware/Validator");
-const Admin = require("../../../libs/Model/Admin");
-const Controller = require("../Controller");
+const Validator = require('../../../libs/Middleware/Validator');
+const Hash = require('../../../libs/Service/Hash');
+const Controller = require('../Controller');
 
 class RegisterController extends Controller {
   constructor() {
     super();
+    this.loadUses([
+      'Admin'
+    ]);
     this.initializeRoutes();
   }
 
   initializeRoutes() {
     this.use("guest");
-    this.router.get("/", this.getRegister.bind(this));
-    this.router.post("/", this.postRegister.bind(this));
+    this.router.get('/', this.getRegister.bind(this));
+    this.router.post('/', this.postRegister.bind(this));
   }
 
   getRegister(req, res) {
@@ -20,11 +23,9 @@ class RegisterController extends Controller {
       error: req.flash("error")[0] || {},
       old: req.flash("old")[0] || {},
     };
-    // res.json('hello')
     res.render("index", data);
   }
   async postRegister(req, res) {
-    // Await the validation to complete
     const validate = await Validator.make(req.body, {
       username: "required|unique:admins",
       email: "required|unique:admins",
@@ -36,16 +37,17 @@ class RegisterController extends Controller {
     if (fail) {
       req.flash("error", validate.errors);
       req.flash("old", validate.old);
-      return res.redirect("/admin/register");
+      return res.redirect('/register');
     }
+    let data = this.only(req.body, ["username", "email", "password"]);
+    data.password = Hash.make(data.password);
     // Model
-    let AdminModel = Admin;
-    let user = await AdminModel.create(req.body);
-    if (user) {
+    let admin = await this.Admin.create(data);
+    if (admin) {
       req.flash("success", "Admin created successfully.");
-      return res.redirect(req.auth().guard("admin").redirectFail());
+      return res.redirect(req.auth().redirectFail());
     }
-    return res.redirect("/admin/register");
+    return res.redirect('/register');
   }
 
   getRouter() {

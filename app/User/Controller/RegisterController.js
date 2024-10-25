@@ -1,10 +1,13 @@
 const Validator = require('../../../libs/Middleware/Validator');
-const User = require('../../../libs/Model/User');
+const Hash = require('../../../libs/Service/Hash');
 const Controller = require('../Controller');
 
 class RegisterController extends Controller {
   constructor() {
     super();
+    this.loadUses([
+      'User'
+    ]);
     this.initializeRoutes();
   }
 
@@ -36,9 +39,10 @@ class RegisterController extends Controller {
       req.flash("old", validate.old);
       return res.redirect('/register');
     }
+    let data = this.only(req.body, ["username", "email", "password"]);
+    data.password = Hash.make(data.password);
     // Model
-    let UserModel = User;
-    let user = await UserModel.create(req.body);
+    let user = await this.User.create(data);
     if (user) {
       req.flash("success", "User created successfully.");
       return res.redirect(req.auth().redirectFail());

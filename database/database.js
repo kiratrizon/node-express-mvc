@@ -15,7 +15,6 @@ class DatabaseConnection {
         if (isSQLite) {
             const dbPath = path.join(__dirname, '../database', 'database.sqlite');
             this.connection = new Database(dbPath);
-            console.log('Connected to SQLite database');
         } else {
             this.connection = mysql.createConnection({
                 host: process.env.MYSQL_ADDON_HOST || 'localhost',
@@ -30,7 +29,6 @@ class DatabaseConnection {
                     console.error('Error connecting to MySQL database:', err.message);
                     process.exit(1);
                 } else {
-                    console.log('Connected to MySQL database');
                 }
             });
         }
@@ -64,13 +62,11 @@ class DatabaseConnection {
 
         if (process.env.DATABASE === 'sqlite') {
             this.connection.close();
-            console.log('SQLite connection closed.');
         } else {
             this.connection.end((err) => {
                 if (err) {
                     console.error('Error closing the MySQL connection:', err.message);
                 } else {
-                    console.log('MySQL connection closed.');
                 }
             });
         }

@@ -1,5 +1,4 @@
 const DatabaseConnection = require('../../database/database');
-const bcrypt = require('bcryptjs');
 const GlobalFunctions = require('../Base/GlobalFunctions');
 class Core extends GlobalFunctions {
     fillable = [];
@@ -216,11 +215,7 @@ class Core extends GlobalFunctions {
         const newData = Object.keys(data)
             .filter(key => this.fillable.includes(key))
             .reduce((acc, key) => {
-                if (key == 'password') {
-                    acc[key] = bcrypt.hashSync(data[key], 10);
-                } else {
-                    acc[key] = data[key];
-                }
+                acc[key] = data[key];
                 return acc;
             }, {});
 

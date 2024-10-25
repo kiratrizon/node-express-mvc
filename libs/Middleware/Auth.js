@@ -1,6 +1,6 @@
-const bcrypt = require('bcryptjs');
 const Configure = require('../Service/Configure');
 const BaseAuth = require('../Base/BaseAuth');
+const Hash = require('../Service/Hash');
 
 function ucFirst(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -47,7 +47,7 @@ class Auth extends BaseAuth {
                 });
                 return false;
             }
-            if (bcrypt.compareSync(data.password, user.password)) {
+            if (Hash.check(data.password, user.password)) {
                 this.#session.auth[this.#guardType].isAuthenticated = true;
                 this.#session.auth[this.#guardType].id = user.id;
                 return true;

@@ -40,8 +40,15 @@ class Blueprint {
     }
 
     timestamp() {
-        this.columns.push({ name: 'created_at', type: 'TIMESTAMP' });
-        this.columns.push({ name: 'updated_at', type: 'TIMESTAMP' });
+        const createdAt = process.env.DATABASE === 'sqlite'
+            ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+        const updatedAt = process.env.DATABASE === 'sqlite'
+            ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
+
+        this.columns.push({ name: 'created_at', type: createdAt });
+        this.columns.push({ name: 'updated_at', type: updatedAt });
     }
 
     getColumns() {
