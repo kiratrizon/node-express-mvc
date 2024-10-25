@@ -37,7 +37,7 @@ class RegisterController extends Controller {
     if (fail) {
       req.flash("error", validate.errors);
       req.flash("old", validate.old);
-      return res.redirect('/register');
+      return res.redirect('/admin/register');
     }
     let data = this.only(req.body, ["username", "email", "password"]);
     data.password = Hash.make(data.password);
@@ -45,9 +45,9 @@ class RegisterController extends Controller {
     let admin = await this.Admin.create(data);
     if (admin) {
       req.flash("success", "Admin created successfully.");
-      return res.redirect(req.auth().redirectFail());
+      return res.redirect(req.auth().guard('admin').redirectFail());
     }
-    return res.redirect('/register');
+    return res.redirect('/admin/register');
   }
 
   getRouter() {
