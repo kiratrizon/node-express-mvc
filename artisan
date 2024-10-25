@@ -1,29 +1,42 @@
 const fs = require('fs');
 const path = require('path');
 
-// Function to pluralize a string
-function pluralize(str) {
-    const lastChar = str.slice(-1).toLowerCase();
-    const lastTwoChars = str.slice(-2).toLowerCase();
-
-    if (lastChar === 'y' && !['a', 'e', 'i', 'o', 'u'].includes(str.slice(-2, -1).toLowerCase())) {
-        return str.slice(0, -1) + 'ies';
-    } else if (['s', 'x', 'z', 'ch', 'sh'].includes(lastTwoChars) || ['s', 'x', 'z'].includes(lastChar)) {
-        return str + 'es';
-    } else if (lastChar !== 's') {
-        return str + 's';
-    }
-    return str;
+function toSnakeCase(str) {
+    return str
+        .replace(/([a-z])([A-Z])/g, '$1_$2')
+        .replace(/\s+/g, '_')
+        .toLowerCase();
 }
 
-// Function to lowercase and pluralize the last word in a string
+function pluralize(str) {
+    const snakeCaseStr = toSnakeCase(str);
+    const words = snakeCaseStr.split('_');
+    const lastWord = words[words.length - 1];
+
+    const lastChar = lastWord.slice(-1).toLowerCase();
+    const lastTwoChars = lastWord.slice(-2).toLowerCase();
+
+    let pluralLastWord;
+    if (lastChar === 'y' && !['a', 'e', 'i', 'o', 'u'].includes(lastWord.slice(-2, -1).toLowerCase())) {
+        pluralLastWord = lastWord.slice(0, -1) + 'ies';
+    } else if (['s', 'x', 'z', 'ch', 'sh'].includes(lastTwoChars) || ['s', 'x', 'z'].includes(lastChar)) {
+        pluralLastWord = lastWord + 'es';
+    } else if (lastChar !== 's') {
+        pluralLastWord = lastWord + 's';
+    } else {
+        pluralLastWord = lastWord;
+    }
+
+    words[words.length - 1] = pluralLastWord;
+    return words.join('_');
+}
+
 function lowercasePluralize(str) {
     const words = str.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ');
     words[words.length - 1] = pluralize(words[words.length - 1]);
     return words.join(' ');
 }
 
-// Function to create a model from a stub
 function createModel(className) {
     const modelStubPath = path.join(__dirname, 'stubs', 'model.stub');
     const modelPath = path.join(__dirname, 'libs', 'Model', `${className}.js`);
@@ -49,12 +62,10 @@ function createModel(className) {
     });
 }
 
-// Function to create a migration from a stub
 function makeMigration(tableName) {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
     const stubPath = path.join(__dirname, 'stubs', 'migration.stub');
 
-    // Ensure the migration directory exists
     if (!fs.existsSync(migrationDir)) {
         fs.mkdirSync(migrationDir, { recursive: true });
     }
@@ -81,13 +92,11 @@ function makeMigration(tableName) {
     });
 }
 
-// Function to create a controller from a stub
 function createController(controllerName, specificArea) {
     const controllerStubPath = path.join(__dirname, 'stubs', 'controller.stub');
     const controllerDir = path.join(__dirname, 'app', specificArea, `Controller`);
     const controllerPath = path.join(controllerDir, `${controllerName}Controller.js`);
 
-    // Ensure the specific area directory exists
     if (!fs.existsSync(controllerDir)) {
         fs.mkdirSync(controllerDir, { recursive: true });
     }
@@ -136,10 +145,8 @@ function makeView(folder, specific) {
     const viewsBasePath = path.join(__dirname, 'server', 'View', specific, folder);
     const viewPath = path.join(viewsBasePath, 'index.ejs');
 
-    // Create the directory if it doesn't exist
     fs.mkdirSync(viewsBasePath, { recursive: true });
 
-    // Read the stub file
     const stubFilePath = path.join(__dirname, 'stubs', 'view.stub');
     fs.readFile(stubFilePath, 'utf8', (err, data) => {
         if (err) {
@@ -147,7 +154,6 @@ function makeView(folder, specific) {
             return;
         }
 
-        // Write the content to the new view file
         fs.writeFile(viewPath, data, (err) => {
             if (err) {
                 console.error('Error creating the view file:', err);
