@@ -57,9 +57,6 @@ app.get('/admin', (req, res) => {
     res.redirect('/admin/dashboard');
 });
 
-app.get('/', (req, res) => {
-    res.redirect('/user');
-});
 
 app.get('/debug', (req, res) => {
     if (true) {
