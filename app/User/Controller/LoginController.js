@@ -3,12 +3,11 @@ const Controller = require("../Controller");
 
 class LoginController extends Controller {
 
-	AppUse = [
-		'User'
-	];
 	constructor() {
 		super();
-		this.loadUses(this.AppUse || []);
+		this.loadUses([
+			'User'
+		]);
 		this.set('title', 'Login');
 		this.initializeRoutes();
 	}

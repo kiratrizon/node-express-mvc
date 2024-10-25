@@ -5,6 +5,11 @@ class User extends Model {
         super('users');
         this.setAlias(this.constructor.name);
     }
+    fillable = [
+        'username',
+        'password',
+        'email',
+    ]
 }
 
 module.exports = new User();

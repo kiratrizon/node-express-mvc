@@ -36,8 +36,8 @@ class BaseController extends GlobalFunctions {
         this.data[key] = value;
     }
 
-    loadUses(models) {
-        if (Array.isArray(models)) {
+    loadUses(models = []) {
+        if (Array.isArray(models) && models.length > 0) {
             models.forEach(use => {
                 this[use] = LoadModel.init(use);
             });
