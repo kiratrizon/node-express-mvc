@@ -79,7 +79,6 @@ function makeMigration(tableName) {
             return;
         }
 
-        // Replace the placeholder in the stub with the actual table name
         const migrationContent = data.replace(/{{ tableName }}/g, tableName);
 
         fs.writeFile(migrationFilePath, migrationContent, 'utf8', (err) => {
@@ -164,6 +163,41 @@ function makeView(folder, specific) {
     });
 }
 
+const { exec } = require('child_process');
+
+function migrate() {
+    const migrationDir = path.join(__dirname, 'database', 'migrations');
+
+    fs.readdir(migrationDir, (err, files) => {
+        if (err) {
+            console.error(`Error reading migration directory: ${err.message}`);
+            return;
+        }
+
+        const migrationFiles = files.filter(file => file.endsWith('.js')).sort();
+
+        if (migrationFiles.length === 0) {
+            console.log('No migration files found.');
+            return;
+        }
+
+        migrationFiles.forEach(file => {
+            const filePath = path.join(migrationDir, file);
+            exec(`node ${filePath}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error executing migration ${file}: ${error.message}`);
+                    return;
+                }
+                if (stderr) {
+                    console.error(`Error in migration ${file}: ${stderr}`);
+                    return;
+                }
+                console.log(`Migration ${file} executed successfully:\n${stdout}`);
+            });
+        });
+    });
+}
+
 const args = process.argv.slice(2);
 if (args.length < 3) {
     console.error("Please provide a command (make model, make migration, or make controller) and a name.");
@@ -175,6 +209,10 @@ const subCommand = args[1];
 const name = args[2];
 const specificArea = args[3];
 
+if (command === 'migrate') {
+    migrate();
+    return;
+}
 if (command === 'make' && subCommand === 'model') {
     createModel(name);
 } else if (command === 'make' && subCommand === 'migration') {
