@@ -25,11 +25,11 @@ class DatabaseConnection {
             });
         } else {
             this.connection = mysql.createConnection({
-                host: 'b1ki8scs0geezffy22p1-mysql.services.clever-cloud.com',
-                user: 'ualy6i6qmmmcyh7h',
-                password: 'MlxVnqezy1jZ5uz5X1LI',
-                database: 'b1ki8scs0geezffy22p1',
-                port: 3306
+                host: process.env.MYSQL_ADDON_HOST || 'localhost',
+                user: process.env.MYSQL_ADDON_USER || 'root',
+                password: process.env.MYSQL_ADDON_PASSWORD || '',
+                database: process.env.MYSQL_ADDON_DB || 'express',
+                port: process.env.MYSQL_ADDON_PORT || 3306
             });
 
             this.connection.connect(err => {
