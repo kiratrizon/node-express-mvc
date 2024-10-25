@@ -3,13 +3,10 @@ const DatabaseConnection = require('../database');
 
 async function up() {
     const blueprint = new Blueprint();
-    const tableName = 'users';
+    const tableName = '{{ tableName }}';
     const db = new DatabaseConnection();
 
     blueprint.id();
-    blueprint.string('email');
-    blueprint.string('username');
-    blueprint.string('password');
     blueprint.timestamp();
 
     const columns = blueprint.getColumns();

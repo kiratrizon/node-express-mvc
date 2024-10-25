@@ -64,7 +64,7 @@ function createModel(className) {
 
 function makeMigration(tableName) {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
-    const stubPath = path.join(__dirname, 'stubs', 'migration.stub');
+    const stubPath = path.join(__dirname, 'stubs', 'migration2.stub');
 
     if (!fs.existsSync(migrationDir)) {
         fs.mkdirSync(migrationDir, { recursive: true });
@@ -199,19 +199,20 @@ function migrate() {
 }
 
 const args = process.argv.slice(2);
-if (args.length < 3) {
-    console.error("Please provide a command (make model, make migration, or make controller) and a name.");
-    process.exit(1);
-}
 
 const command = args[0];
-const subCommand = args[1];
-const name = args[2];
-const specificArea = args[3];
+
 
 if (command === 'migrate') {
     migrate();
     return;
+}
+const subCommand = args[1];
+const name = args[2];
+const specificArea = args[3];
+if (args.length < 3) {
+    console.error("Please provide a command (make model, make migration, or make controller) and a name.");
+    process.exit(1);
 }
 if (command === 'make' && subCommand === 'model') {
     createModel(name);

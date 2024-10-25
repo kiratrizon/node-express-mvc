@@ -1,25 +1,27 @@
-const Migrator = require('../../libs/Service/Migrator');
+const Blueprint = require('../../libs/Service/Blueprint');
+const DatabaseConnection = require('../database');
 
-const m = new Migrator();
-const tableName = 'admins';
+async function up() {
+    const blueprint = new Blueprint();
+    const tableName = 'admins';
+    const db = new DatabaseConnection();
 
-// Check if database type is MySQL or SQLite
-m.addSql(`DROP TABLE IF EXISTS ${tableName}`);
-m.addSql(`CREATE TABLE IF NOT EXISTS ${tableName} (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    username VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);`);
+    blueprint.id();
+    blueprint.string('email');
+    blueprint.string('username');
+    blueprint.string('password');
+    blueprint.timestamp();
 
-(async () => {
+    const columns = blueprint.getColumns();
+
     try {
-        console.log('Starting migration...');
-        await m.migrate();
-        console.log('Migration completed.');
-    } catch (error) {
-        console.error('Migration failed:', error);
+        await db.runQuery(`CREATE TABLE ${tableName} (${columns});`);
+        console.log(`Table ${tableName} created successfully.`);
+    } catch (err) {
+        console.error(`Error creating table ${tableName}:`, err);
+    } finally {
+        db.close();
     }
-})();
+}
+
+up();
