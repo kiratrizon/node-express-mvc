@@ -25,7 +25,7 @@
                 <% } %>
             </div>
             <div class="mb-3">
-                <label for="password_confirmation" class="form-label">Password</label>
+                <label for="password_confirmation" class="form-label">Confirm Password</label>
                 <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" placeholder="Confirm your password" value="<%= old.password_confirmation ?? '' %>">
                 <% if (error.password_confirmation){ %>
                     <div class="text-danger"><%= error.password_confirmation %></div>
