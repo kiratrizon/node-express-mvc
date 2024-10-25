@@ -1,14 +1,14 @@
-const Controller = require('../Controller');
+const Controller = require("../Controller");
 
 class LogoutController extends Controller {
   constructor() {
     super();
-    this.set('title', 'Logout');
+    this.set("title", "Logout");
     this.initializeRoutes();
   }
 
   initializeRoutes() {
-    this.router.get('/', this.getLogout.bind(this));
+    this.router.get("/", this.getLogout.bind(this));
   }
 
   getLogout(req, res) {

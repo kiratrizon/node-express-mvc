@@ -1,6 +1,6 @@
-const Validator = require('../../../libs/Middleware/Validator');
-const Admin = require('../../../libs/Model/Admin');
-const Controller = require('../Controller');
+const Validator = require("../../../libs/Middleware/Validator");
+const Admin = require("../../../libs/Model/Admin");
+const Controller = require("../Controller");
 
 class RegisterController extends Controller {
   constructor() {
@@ -10,8 +10,8 @@ class RegisterController extends Controller {
 
   initializeRoutes() {
     this.use("guest");
-    this.router.get('/', this.getRegister.bind(this));
-    this.router.post('/', this.postRegister.bind(this));
+    this.router.get("/", this.getRegister.bind(this));
+    this.router.post("/", this.postRegister.bind(this));
   }
 
   getRegister(req, res) {
@@ -36,16 +36,16 @@ class RegisterController extends Controller {
     if (fail) {
       req.flash("error", validate.errors);
       req.flash("old", validate.old);
-      return res.redirect('/admin/register');
+      return res.redirect("/admin/register");
     }
     // Model
     let AdminModel = Admin;
     let user = await AdminModel.create(req.body);
     if (user) {
       req.flash("success", "Admin created successfully.");
-      return res.redirect(req.auth().guard('admin').redirectFail());
+      return res.redirect(req.auth().guard("admin").redirectFail());
     }
-    return res.redirect('/admin/register');
+    return res.redirect("/admin/register");
   }
 
   getRouter() {

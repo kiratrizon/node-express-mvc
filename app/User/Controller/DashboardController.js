@@ -4,7 +4,7 @@ class DashboardController extends Controller {
   constructor() {
     super();
     this.loadUses([
-      'User'
+
     ]);
     this.initializeRoutes();
   }

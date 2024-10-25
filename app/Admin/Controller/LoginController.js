@@ -2,14 +2,11 @@ const Validator = require("../../../libs/Middleware/Validator");
 const Controller = require("../Controller");
 
 class LoginController extends Controller {
-
-    AppUse = [
-        'Admin'
-    ];
+    AppUse = ["Admin"];
     constructor() {
         super();
         this.loadUses(this.AppUse || []);
-        this.set('title', 'Login');
+        this.set("title", "Login");
         this.initializeRoutes();
     }
 
@@ -20,9 +17,9 @@ class LoginController extends Controller {
     }
 
     getLogin(req, res) {
-        this.set('error', req.flash("error")[0] || false);
-        this.set('old', req.flash("old")[0] || false);
-        this.set('success', req.flash("success")[0] || false);
+        this.set("error", req.flash("error")[0] || false);
+        this.set("old", req.flash("old")[0] || false);
+        this.set("success", req.flash("success")[0] || false);
         res.render("index", this.data);
     }
     async postLogin(req, res) {
@@ -33,14 +30,17 @@ class LoginController extends Controller {
         let fail = validate.fails();
         if (fail) {
             req.flash("error", validate.errors);
-            req.flash('old', validate.old);
-            return res.redirect(req.auth().guard('admin').redirectFail());
+            req.flash("old", validate.old);
+            return res.redirect(req.auth().guard("admin").redirectFail());
         }
-        let attempt = await req.auth().guard('admin').attempt({ username: req.body.username, password: req.body.password });
+        let attempt = await req
+            .auth()
+            .guard("admin")
+            .attempt({ username: req.body.username, password: req.body.password });
         if (attempt) {
-            return res.redirect(req.auth().guard('admin').redirectAuth());
+            return res.redirect(req.auth().guard("admin").redirectAuth());
         }
-        return res.redirect(req.auth().guard('admin').redirectFail());
+        return res.redirect(req.auth().guard("admin").redirectFail());
     }
 
     getRouter() {

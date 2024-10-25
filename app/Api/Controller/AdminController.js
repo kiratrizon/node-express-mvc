@@ -7,8 +7,7 @@ class LoginController extends Controller {
     this.initializeRoutes();
   }
 
-  initializeRoutes() {
-  }
+  initializeRoutes() { }
 
   getRouter() {
     return this.router;
