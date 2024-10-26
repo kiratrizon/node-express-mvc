@@ -1,3 +1,4 @@
+
 const fs = require('fs');
 const path = require('path');
 
@@ -164,6 +165,8 @@ function makeView(folder, specific) {
 }
 
 const { exec } = require('child_process');
+const Configure = require('./libs/Service/Configure');
+const GlobalFunctions = require('./libs/Base/GlobalFunctions');
 
 function migrate() {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
@@ -205,7 +208,7 @@ const command = args[0];
 
 if (command === 'migrate') {
     migrate();
-    return;
+    process.exit(1);
 }
 const subCommand = args[1];
 const name = args[2];
@@ -214,17 +217,23 @@ if (args.length < 3) {
     console.error("Please provide a command (make model, make migration, or make controller) and a name.");
     process.exit(1);
 }
-if (command === 'make' && subCommand === 'model') {
-    createModel(name);
-} else if (command === 'make' && subCommand === 'migration') {
-    makeMigration(name);
-} else if (command === 'make' && subCommand === 'controller' && specificArea) {
-    createController(name, specificArea);
-} else if (command === 'make' && subCommand === 'config') {
-    createConfig(name);
-} else if (command === 'make' && subCommand === 'view') {
-    makeView(name, specificArea);
-} else {
-    console.error("Invalid command. Use 'make model <ClassName>', 'make migration <tableName>', or 'make controller <ControllerName> <SpecificArea>'.");
-    process.exit(1);
+if (command === 'make' && subCommand === 'controller' && name === 'default') {
+    let entities = Object.keys(Configure.read('auth.guards'));
+    let globalFunctions = new GlobalFunctions();
+    entities.forEach((entity) => {
+        createController(globalFunctions.ucFirst(Configure.read('default.prefix_controller')), globalFunctions.ucFirst(entity));
+    })
+}
+if (!specificArea) {
+    if (command === 'make' && subCommand === 'model') {
+        createModel(name);
+    } else if (command === 'make' && subCommand === 'migration') {
+        makeMigration(name);
+    } else if (command === 'make' && subCommand === 'controller' && specificArea) {
+        createController(name, specificArea);
+    } else if (command === 'make' && subCommand === 'config') {
+        createConfig(name);
+    } else if (command === 'make' && subCommand === 'view') {
+        makeView(name, specificArea);
+    }
 }

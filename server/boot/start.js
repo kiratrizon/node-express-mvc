@@ -28,9 +28,12 @@ const flash = require('connect-flash');
 const Configure = require('../../libs/Service/Configure');
 const Auth = require('../../libs/Middleware/Auth');
 const fs = require('fs');
+const defaultGuard = Configure.read('auth.default.guard');
+const defaultPrefix = Configure.read(`auth.providers.${Configure.read(`auth.guards.${defaultGuard}.provider`)}.prefix`);
+const defaultController = Configure.read('default.prefix');
 
 const app = express();
-const router = express.Router();
+const homeRouter = express.Router();
 app.use(session({
     secret: '272b1a3a2b5c03402b70d18fa93555fcc1d53c583b32258b8ae5bf4be6414d2e339232704e2270fe30bcf1860bb68e507c304ae4d49024d52c4cbc8871d38b2d',
     resave: false,
@@ -49,21 +52,6 @@ function ucFirst(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-app.use((req, res, next) => {
-    res.locals.config = (value) => Configure.read(value);
-    res.locals.auth = () => new Auth(req);
-    req.auth = () => new Auth(req);
-    req.uriPath = req.path.split('/');
-    req.uriPath.shift();
-    const routeSource = ['admin', 'api', 'developer'];
-    if (!routeSource.includes(req.uriPath[0])) {
-        req.uriPath.unshift('user');
-    }
-    const [type, controller] = req.uriPath;
-    req.routeSrc = { type, controller };
-    next();
-});
-
 const guards = Configure.read('auth.guards');
 const providers = Configure.read('auth.providers');
 Object.keys(guards).forEach((auth) => {
@@ -72,14 +60,43 @@ Object.keys(guards).forEach((auth) => {
     if (!provider.prefix) {
         throw new Error(`Please add prefix in your ${auth}`);
     }
-    router.get(provider.prefix, (req, res) => {
-        res.redirect(provider.failed);
+});
+
+app.use((req, res, next) => {
+    if (!req.session['auth']) {
+        req.session['auth'] = {};
+    }
+    Object.keys(guards).forEach((auth) => {
+        if (!req.session['auth'][auth]) {
+            req.session['auth'][auth] = {
+                isAuthenticated: false,
+                id: null,
+            };
+        }
     });
+    next();
+});
+
+app.use((req, res, next) => {
+    res.locals.config = (value) => Configure.read(value);
+    res.locals.auth = () => new Auth(req);
+    req.auth = () => new Auth(req);
+    req.uriPath = req.path.split('/');
+    req.uriPath.shift();
+    const routeSource = Object.keys(guards);
+    const filteredRouteSource = routeSource.filter(route => route !== defaultGuard);
+
+    if (!filteredRouteSource.includes(req.uriPath[0])) {
+        req.uriPath.unshift(defaultGuard);
+    }
+    const [type, controller] = req.uriPath;
+    req.routeSrc = { type, controller };
+    next();
 });
 
 
 app.use(loadPrefixes());
-app.use(router);
+app.use(homeRouter);
 
 function ucFirst(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -88,7 +105,7 @@ function ucFirst(string) {
 
 function loadPrefixes() {
     return (req, res, next) => {
-        if (!Configure.read('auth.default.guard')) {
+        if (!defaultGuard) {
             return res.status(500).send('Default guard not set on config/auth.js');
         }
         next();
@@ -97,9 +114,9 @@ function loadPrefixes() {
 
 app.use((req, res, next) => {
     let splittedUrl = req.path.split('/');
-    if (splittedUrl[1] === 'user') {
+    if (splittedUrl[1] === defaultGuard) {
         splittedUrl.splice(1, 1);
-        let newPath = splittedUrl.join('/') || '/';
+        let newPath = splittedUrl.join('/') || defaultPrefix;
         return res.redirect(newPath);
     }
     next();
@@ -109,7 +126,7 @@ app.use((req, res, next) => {
     const originalRender = res.render;
 
     res.render = function (view, locals, callback) {
-        let newView = fs.existsSync(path.join(__dirname, '..', '..', 'view', req.routeSrc.type, req.routeSrc.controller, `${view}.ejs`)) ? `${ucFirst(req.routeSrc.type)}/${ucFirst(req.routeSrc.controller)}/${view}` : path.join(__dirname, '..', '..', 'view', view);
+        let newView = fs.existsSync(path.join(__dirname, '..', '..', 'view', req.routeSrc.type, req.routeSrc.controller ?? defaultController, `${view}.ejs`)) ? `${ucFirst(req.routeSrc.type)}/${ucFirst(req.routeSrc.controller ?? defaultController)}/${view}` : path.join(__dirname, '..', '..', 'view', view);
         originalRender.call(this, newView, locals, callback);
     };
 

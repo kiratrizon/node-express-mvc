@@ -8,8 +8,7 @@ class HomeController extends Controller {
   }
 
   initializeRoutes() {
-    this.middleware('auth');
-    this.get('/', this.getHome);
+    this.router.get('/', this.getHome.bind(this));
   }
 
   getHome(req, res) {
