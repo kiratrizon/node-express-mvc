@@ -11,7 +11,6 @@ class Model extends Core {
     find(type = 'all', options) {
         return super.find(type, options);
     }
-
 }
 
 module.exports = Model;

@@ -92,6 +92,35 @@ function makeMigration(tableName) {
     });
 }
 
+function makeToken(tableName) {
+    const migrationDir = path.join(__dirname, 'database', 'migrations');
+    const stubPath = path.join(__dirname, 'stubs', 'token.stub');
+
+    if (!fs.existsSync(migrationDir)) {
+        fs.mkdirSync(migrationDir, { recursive: true });
+    }
+
+    const migrationFileName = `create_${tableName}.js`;
+    const migrationFilePath = path.join(migrationDir, migrationFileName);
+
+    fs.readFile(stubPath, 'utf8', (err, data) => {
+        if (err) {
+            console.error(`Error reading migration stub: ${err.message}`);
+            return;
+        }
+
+        const migrationContent = data.replace(/{{ tableName }}/g, tableName);
+
+        fs.writeFile(migrationFilePath, migrationContent, 'utf8', (err) => {
+            if (err) {
+                console.error(`Error writing migration file: ${err.message}`);
+            } else {
+                console.log(`Migration file created at ${migrationFilePath}`);
+            }
+        });
+    });
+}
+
 function createController(controllerName, specificArea) {
     const controllerStubPath = path.join(__dirname, 'stubs', 'controller.stub');
     const controllerDir = path.join(__dirname, 'app', specificArea, `Controller`);
@@ -204,15 +233,22 @@ function migrate() {
 const args = process.argv.slice(2);
 
 const command = args[0];
-
+const subCommand = args[1];
 
 if (command === 'migrate') {
     migrate();
-    process.exit(1);
+    process.exit(0);
+} else if (command === 'make' && subCommand === 'token-tables') {
+    let tokenKeys = Object.values(Configure.read('auth.access_tokens'));
+    tokenKeys.forEach((ele) => {
+        makeToken(ele.table);
+    });
+    process.exit(0);
 }
-const subCommand = args[1];
+
 const name = args[2];
 const specificArea = args[3];
+
 if (args.length < 3) {
     console.error("Please provide a command (make model, make migration, or make controller) and a name.");
     process.exit(1);

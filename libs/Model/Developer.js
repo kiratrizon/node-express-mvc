@@ -1,6 +1,6 @@
-const Model = require("../Main/Model");
+const Tokenable = require("../Private/Tokenable");
 
-class Developer extends Model {
+class Developer extends Tokenable {
     constructor() {
         super('developers');
         this.setAlias(this.constructor.name);

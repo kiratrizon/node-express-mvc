@@ -54,6 +54,7 @@ function ucFirst(string) {
 
 const guards = Configure.read('auth.guards');
 const providers = Configure.read('auth.providers');
+const sessionKeys = Object.keys(guards).filter((ele) => guards[ele].driver === 'session');
 Object.keys(guards).forEach((auth) => {
     const guard = guards[auth];
     const provider = providers[guard.provider];
@@ -66,7 +67,7 @@ app.use((req, res, next) => {
     if (!req.session['auth']) {
         req.session['auth'] = {};
     }
-    Object.keys(guards).forEach((auth) => {
+    sessionKeys.forEach((auth) => {
         if (!req.session['auth'][auth]) {
             req.session['auth'][auth] = {
                 isAuthenticated: false,

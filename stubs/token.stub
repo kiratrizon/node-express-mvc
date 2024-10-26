@@ -8,6 +8,14 @@ async function up() {
 
     blueprint.id();
     blueprint.timestamp();
+    blueprint.string('token');
+    blueprint.string('user_id');
+    blueprint.string('name');
+    blueprint.string('description');
+    blueprint.string('scopes');
+    blueprint.string('expires_at');
+    blueprint.string('last_used_at');
+    blueprint.string('is_revoked INTEGER DEFAULT 0');
 
     const columns = blueprint.getColumns();
 

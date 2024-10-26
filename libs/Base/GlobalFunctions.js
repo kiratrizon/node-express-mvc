@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const mailer = require('nodemailer');
 const NodeMailer = require('../../vendor/node-mailer');
+const Configure = require('../Service/Configure');
 
 class GlobalFunctions {
     constructor() {
@@ -48,6 +49,10 @@ class GlobalFunctions {
         }
 
         fs.appendFileSync(logPath, logMessage, 'utf8');
+    }
+
+    config(finder) {
+        return Configure.read(finder);
     }
 }
 

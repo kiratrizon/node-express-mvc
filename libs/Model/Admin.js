@@ -1,6 +1,7 @@
-const Model = require("../Main/Model");
+const Tokenable = require("../Private/Tokenable");
 
-class Admin extends Model {
+class Admin extends Tokenable {
+    hasApiToken = true;
     constructor() {
         super('admins');
         this.setAlias(this.constructor.name);

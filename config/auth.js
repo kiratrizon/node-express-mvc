@@ -2,7 +2,6 @@ const Admin = require("../libs/Model/Admin");
 const User = require("../libs/Model/User");
 const Developer = require("../libs/Model/Developer");
 
-// ensure that all keys are in lowercase
 const constant = {
     default: {
         guard: "user"
@@ -44,6 +43,12 @@ const constant = {
             prefix: '/developer',
         }
     },
+    access_tokens: {
+        // set the model as key followed by keys of table
+        "User": { table: "user_access_token", },
+        "Admin": { table: "admin_access_token" },
+        "Developer": { table: "developer_access_token" }
+    }
 };
 
 module.exports = constant;

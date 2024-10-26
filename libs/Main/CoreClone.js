@@ -2,35 +2,36 @@ const DatabaseConnection = require('../../database/database');
 const GlobalFunctions = require('../Base/GlobalFunctions');
 
 class Core extends GlobalFunctions {
+    #values;
     constructor(tableName) {
         super();
         this.tableName = tableName;
         this.db = new DatabaseConnection();
         this.debug = this.db.debugger;
-        this.values = [];
+        this.#values = [];
     }
 
     async find(options) {
         let sql = `SELECT `;
         const conditions = options.conditions || {};
         const builtConditions = this.buildConditions(conditions);
-        this.values.push(...builtConditions.values);
+        this.#values.push(...builtConditions.values);
         sql += `* FROM ${this.tableName} ${builtConditions.sql} LIMIT 1`.trim() + ";";
 
         if (this.debug) {
             console.log("SQL Query:", sql);
-            console.log("Query Values:", this.values);
+            console.log("Query Values:", this.#values);
         }
 
         try {
-            const data = await this.db.runQuery(sql, this.values);
+            const data = await this.db.runQuery(sql, this.#values);
             return data[0] ? data[0] : null; // Ensure it returns null if no data found
         } catch (error) {
             console.error("Error executing query:", error);
             throw error;
         } finally {
             this.db.close();
-            this.values = [];
+            this.#values = [];
         }
     }
 
