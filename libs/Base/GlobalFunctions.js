@@ -33,6 +33,23 @@ class GlobalFunctions {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
+    formatDate(date) {
+        return date.toISOString().slice(0, 19).replace('T', ' ')
+    }
+
+    getFutureDate(addTime = 60) {
+        if (addTime == 'never') {
+            return '9999-12-31 23:59:59';
+        } else {
+            // add time is in hours
+            const now = new Date();
+
+            const futureDate = new Date(now.getTime() + addTime * 24 * 60 * 60 * 1000);
+
+            return this.formatDate(futureDate);
+        }
+    }
+
     log(value, destination, text = "") {
         const dirPath = path.join(__dirname, '..', '..', 'tmp');
         const logPath = path.join(dirPath, `${destination}.log`);

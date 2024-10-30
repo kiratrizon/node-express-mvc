@@ -45,9 +45,31 @@ const constant = {
     },
     access_tokens: {
         // set the model as key followed by keys of table
-        "User": { table: "user_access_token", },
-        "Admin": { table: "admin_access_token" },
-        "Developer": { table: "developer_access_token" }
+        "User": { table: "user_access_tokens", },
+        "Admin": { table: "admin_access_tokens" },
+        "Developer": { table: "developer_access_tokens" }
+    },
+    token_table_structure: {
+        user_id: { type: "integer", },
+        name: { type: "string", },
+        token: { type: "string", },
+        expires_at: { type: "datetime", },
+        last_used_at: { type: "datetime", },
+        is_revoked: { type: "boolean", default: 0 },
+        timestamp: true,
+    },
+    // in days
+    token_expiration: 356,
+    secret_table_structure: {
+        user_id: { type: "integer", },
+        secret_id: { type: "string", },
+        secret_key: { type: "string", },
+        timestamp: true,
+    },
+    secrets: {
+        "User": { table: "user_secrets", },
+        "Admin": { table: "admin_secrets" },
+        "Developer": { table: "developer_secrets" }
     }
 };
 

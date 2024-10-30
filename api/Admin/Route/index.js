@@ -17,7 +17,7 @@ fs.readdir(controllersPath, (err, files) => {
         const controller = require(controllerPath);
 
         const routePath = `/${path.parse(file).name}`.toLowerCase();
-        const fileNameWithoutSuffix = routePath.replace('controller', '');
+        let fileNameWithoutSuffix = routePath.replace('controller', '');
         router.use(fileNameWithoutSuffix, controller);
     });
 });

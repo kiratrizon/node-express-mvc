@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 class Blueprint {
     constructor() {
         this.columns = [];
@@ -5,14 +7,15 @@ class Blueprint {
 
     id() {
         const idDefinition = process.env.DATABASE === 'sqlite'
-            ? 'INTEGER PRIMARY KEY AUTOINCREMENT'
+            ? 'INTEGER PRIMARY KEY'
             : 'INT AUTO_INCREMENT PRIMARY KEY';
 
         this.columns.push({ name: 'id', type: idDefinition });
     }
 
     string(name, length = 255) {
-        this.columns.push({ name, type: `VARCHAR(${length})` });
+        const type = process.env.DATABASE === 'sqlite' ? 'TEXT' : `VARCHAR(${length})`;
+        this.columns.push({ name, type });
     }
 
     text(name) {
@@ -24,27 +27,34 @@ class Blueprint {
     }
 
     float(name) {
-        this.columns.push({ name, type: 'FLOAT' });
+        const type = process.env.DATABASE === 'sqlite' ? 'REAL' : 'FLOAT';
+        this.columns.push({ name, type });
     }
 
     double(name) {
-        this.columns.push({ name, type: 'DOUBLE' });
+        const type = process.env.DATABASE === 'sqlite' ? 'REAL' : 'DOUBLE';
+        this.columns.push({ name, type });
     }
 
     boolean(name) {
-        this.columns.push({ name, type: 'BOOLEAN' });
+        const type = process.env.DATABASE === 'sqlite' ? 'INTEGER' : 'BOOLEAN';
+        this.columns.push({ name, type });
     }
 
     date(name) {
         this.columns.push({ name, type: 'DATE' });
     }
 
+    datetime(name) {
+        this.columns.push({ name, type: 'DATETIME' });
+    }
+
     timestamp() {
         const createdAt = process.env.DATABASE === 'sqlite'
-            ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ? 'DATETIME DEFAULT CURRENT_TIMESTAMP'
             : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
         const updatedAt = process.env.DATABASE === 'sqlite'
-            ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ? 'DATETIME DEFAULT CURRENT_TIMESTAMP'
             : 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
 
         this.columns.push({ name: 'created_at', type: createdAt });

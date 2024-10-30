@@ -1,12 +1,13 @@
-
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
+const Configure = require('./libs/Service/Configure');
+require('dotenv').config();
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 function toSnakeCase(str) {
-    return str
-        .replace(/([a-z])([A-Z])/g, '$1_$2')
-        .replace(/\s+/g, '_')
-        .toLowerCase();
+    return str.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/\s+/g, '_').toLowerCase();
 }
 
 function pluralize(str) {
@@ -49,9 +50,7 @@ function createModel(className) {
         }
 
         const lowerCasePluralizedClassName = lowercasePluralize(className);
-        const output = data
-            .replace(/{{ classname }}/g, className)
-            .replace(/{{ lowercasePluralizedClassname }}/g, lowerCasePluralizedClassName);
+        const output = data.replace(/{{ classname }}/g, className).replace(/{{ lowercasePluralizedClassname }}/g, lowerCasePluralizedClassName);
 
         fs.writeFile(modelPath, output, 'utf8', (err) => {
             if (err) {
@@ -63,9 +62,9 @@ function createModel(className) {
     });
 }
 
-function makeMigration(tableName) {
+function makeMigration(tableName, type, entity = false) {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
-    const stubPath = path.join(__dirname, 'stubs', 'migration2.stub');
+    const stubPath = path.join(__dirname, 'stubs', `${entity ? 'migration.stub' : `${type === 'token' ? 'token.stub' : `${type === 'secret' ? 'secret.stub' : 'migration2.stub'}`}`}`);
 
     if (!fs.existsSync(migrationDir)) {
         fs.mkdirSync(migrationDir, { recursive: true });
@@ -92,38 +91,10 @@ function makeMigration(tableName) {
     });
 }
 
-function makeToken(tableName) {
-    const migrationDir = path.join(__dirname, 'database', 'migrations');
-    const stubPath = path.join(__dirname, 'stubs', 'token.stub');
+function createController(controllerName, specificArea, sub) {
 
-    if (!fs.existsSync(migrationDir)) {
-        fs.mkdirSync(migrationDir, { recursive: true });
-    }
-
-    const migrationFileName = `create_${tableName}.js`;
-    const migrationFilePath = path.join(migrationDir, migrationFileName);
-
-    fs.readFile(stubPath, 'utf8', (err, data) => {
-        if (err) {
-            console.error(`Error reading migration stub: ${err.message}`);
-            return;
-        }
-
-        const migrationContent = data.replace(/{{ tableName }}/g, tableName);
-
-        fs.writeFile(migrationFilePath, migrationContent, 'utf8', (err) => {
-            if (err) {
-                console.error(`Error writing migration file: ${err.message}`);
-            } else {
-                console.log(`Migration file created at ${migrationFilePath}`);
-            }
-        });
-    });
-}
-
-function createController(controllerName, specificArea) {
     const controllerStubPath = path.join(__dirname, 'stubs', 'controller.stub');
-    const controllerDir = path.join(__dirname, 'app', specificArea, `Controller`);
+    const controllerDir = path.join(__dirname, sub == 'controller' ? 'app' : 'api', specificArea, `Controller`);
     const controllerPath = path.join(controllerDir, `${controllerName}Controller.js`);
 
     if (!fs.existsSync(controllerDir)) {
@@ -136,9 +107,7 @@ function createController(controllerName, specificArea) {
             return;
         }
 
-        const output = data
-            .replace(/{{ ControllerName }}/g, controllerName)
-            .replace(/{{ SpecificArea }}/g, specificArea);
+        const output = data.replace(/{{ ControllerName }}/g, controllerName).replace(/{{ SpecificArea }}/g, specificArea);
 
         fs.writeFile(controllerPath, output, 'utf8', (err) => {
             if (err) {
@@ -193,19 +162,11 @@ function makeView(folder, specific) {
     });
 }
 
-const { exec } = require('child_process');
-const Configure = require('./libs/Service/Configure');
-const GlobalFunctions = require('./libs/Base/GlobalFunctions');
-
-function migrate() {
+async function migrate() {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
 
-    fs.readdir(migrationDir, (err, files) => {
-        if (err) {
-            console.error(`Error reading migration directory: ${err.message}`);
-            return;
-        }
-
+    try {
+        const files = await fs.promises.readdir(migrationDir); // Read directory contents
         const migrationFiles = files.filter(file => file.endsWith('.js')).sort();
 
         if (migrationFiles.length === 0) {
@@ -213,63 +174,76 @@ function migrate() {
             return;
         }
 
-        migrationFiles.forEach(file => {
+        // Execute each migration file sequentially
+        for (const file of migrationFiles) {
             const filePath = path.join(migrationDir, file);
-            exec(`node ${filePath}`, (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Error executing migration ${file}: ${error.message}`);
-                    return;
-                }
+            try {
+                const { stdout, stderr } = await execPromise(`node ${filePath}`);
                 if (stderr) {
                     console.error(`Error in migration ${file}: ${stderr}`);
-                    return;
+                    return; // Stop execution on error
                 }
                 console.log(`Migration ${file} executed successfully:\n${stdout}`);
-            });
-        });
-    });
+            } catch (error) {
+                console.error(`Error executing migration ${file}: ${error.message}`);
+                return; // Stop execution on error
+            }
+        }
+    } catch (err) {
+        console.error(`Error reading migration directory: ${err.message}`);
+    }
 }
 
 const args = process.argv.slice(2);
+const [command, subCommand, name, specificArea] = args;
 
-const command = args[0];
-const subCommand = args[1];
-
-if (command === 'migrate') {
-    migrate();
-    process.exit(0);
-} else if (command === 'make' && subCommand === 'token-tables') {
-    let tokenKeys = Object.values(Configure.read('auth.access_tokens'));
-    tokenKeys.forEach((ele) => {
-        makeToken(ele.table);
-    });
-    process.exit(0);
-}
-
-const name = args[2];
-const specificArea = args[3];
-
-if (args.length < 3) {
-    console.error("Please provide a command (make model, make migration, or make controller) and a name.");
+if (!command) {
+    console.error("Please provide a command (e.g., make model, make migration, make controller) and a name.");
     process.exit(1);
 }
-if (command === 'make' && subCommand === 'controller' && name === 'default') {
-    let entities = Object.keys(Configure.read('auth.guards'));
-    let globalFunctions = new GlobalFunctions();
-    entities.forEach((entity) => {
-        createController(globalFunctions.ucFirst(Configure.read('default.prefix_controller')), globalFunctions.ucFirst(entity));
-    })
-}
-if (!specificArea) {
-    if (command === 'make' && subCommand === 'model') {
-        createModel(name);
-    } else if (command === 'make' && subCommand === 'migration') {
-        makeMigration(name);
-    } else if (command === 'make' && subCommand === 'controller' && specificArea) {
-        createController(name, specificArea);
-    } else if (command === 'make' && subCommand === 'config') {
-        createConfig(name);
-    } else if (command === 'make' && subCommand === 'view') {
-        makeView(name, specificArea);
+(async () => {
+    if (command === 'make') {
+        switch (subCommand) {
+            case 'model':
+                createModel(name);
+                break;
+            case 'migration':
+                switch (specificArea) {
+                    case 'entity':
+                        makeMigration(name, 'table', true);
+                        break;
+                    default:
+                        makeMigration(name, 'table');
+                }
+                break;
+            case 'controller':
+            case 'apicontroller':
+                createController(name, specificArea, subCommand);
+                break;
+            case 'config':
+                createConfig(name);
+                break;
+            case 'view':
+                makeView(name, specificArea);
+                break;
+            case 'token-tables':
+                const tokenKeys = Object.values(Configure.read('auth.access_tokens'));
+                tokenKeys.forEach((ele) => {
+                    makeMigration(ele.table, 'token');
+                });
+                break;
+            case 'secret':
+                const secretKeys = Object.values(Configure.read('auth.secrets'));
+                secretKeys.forEach((ele) => {
+                    makeMigration(ele.table, 'secret');
+                });
+                break;
+            default:
+                console.error(`Unknown subCommand "${subCommand}" provided.`);
+                process.exit(1);
+        }
+    } else if (command === 'migrate') {
+        await migrate();
     }
-}
+})();
+

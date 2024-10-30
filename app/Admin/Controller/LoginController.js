@@ -20,7 +20,6 @@ class LoginController extends Controller {
         this.set("error", req.flash("error")[0] || false);
         this.set("old", req.flash("old")[0] || false);
         this.set("success", req.flash("success")[0] || false);
-        this.Admin.createToken();
         res.render("index", this.data);
     }
     async postLogin(req, res) {

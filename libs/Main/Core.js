@@ -5,13 +5,15 @@ class Core extends GlobalFunctions {
     timestamps = true;
     #privateColumns = {};
     #values;
+    #modelName;
+    #insertedId;
     constructor(tableName) {
         super();
         this.tableName = tableName;
         this.db = new DatabaseConnection();
         this.debug = this.db.debugger;
         this.#values = [];
-        this.modelName = ''; // Initialize modelName
+        this.#modelName = ''; // Initialize modelName
     }
 
     async find(type, options = {}) {
@@ -29,21 +31,21 @@ class Core extends GlobalFunctions {
         const builtConditions = this.#buildConditions(conditions);
         this.#values.push(...builtConditions.values);
 
-        const selectedFields = fields.length ? fields : [`${this.modelName}.*`, ...builtJoins.mixedTable];
+        const selectedFields = fields.length ? fields : [`${this.#modelName}.*`, ...builtJoins.mixedTable];
 
         // Building SQL query based on type
         switch (type) {
             case 'count':
-                sql += `COUNT(*) FROM ${this.tableName} AS ${this.modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)};`;
+                sql += `COUNT(*) FROM ${this.tableName} AS ${this.#modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)};`;
                 break;
             case 'all':
-                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} ${limitAndOffset};`;
+                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.#modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} ${limitAndOffset};`;
                 break;
             case 'first':
-                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} LIMIT 1;`;
+                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.#modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} LIMIT 1;`;
                 break;
             case 'list':
-                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} ${limitAndOffset};`;
+                sql += `${selectedFields.join(', ')} FROM ${this.tableName} AS ${this.#modelName} ${builtJoins.sql} ${builtConditions.sql} ${this.#buildGroup(group)} ${this.#buildOrder(order)} ${limitAndOffset};`;
                 break;
             default:
                 throw new Error(`Unsupported find type: ${type}`);
@@ -56,12 +58,12 @@ class Core extends GlobalFunctions {
 
         try {
             const data = await this.db.runQuery(sql, this.#values);
+            await this.db.close();
             return type === 'first' ? data[0] : data;
         } catch (error) {
             console.error("Error executing query:", error);
             throw error;
         } finally {
-            this.db.close();
             this.#values = []; // Reset values for future queries
         }
     }
@@ -80,7 +82,7 @@ class Core extends GlobalFunctions {
 
         try {
             const data = await this.db.runQuery(sql, this.#values);
-            this.db.close();
+            await this.db.close();
             return data[0] || null;
         } catch (error) {
             console.error("Error executing query:", error);
@@ -102,7 +104,7 @@ class Core extends GlobalFunctions {
     }
 
     setAlias(alias) {
-        this.modelName = alias;
+        this.#modelName = alias;
     }
 
     #buildJoins(joins = []) {
@@ -173,6 +175,10 @@ class Core extends GlobalFunctions {
                     break;
                 case 'LIKE':
                 case '=':
+                case '>=':
+                case '<=':
+                case '>':
+                case '<':
                 case 'NOT LIKE':
                     sqlConditions.push(`${key} ${operator} ?`);
                     values.push(conditionValue);
@@ -251,17 +257,14 @@ class Core extends GlobalFunctions {
 
         try {
             const result = await this.db.runQuery(sql, this.#values);
-            return result;
+            this.#insertedId = result.lastInsertRowid ?? null;
+            await this.db.close();
+            return result ?? null;
         } catch (error) {
             throw new Error(`Error inserting data: ${error.message}`);
         } finally {
-            this.db.close();
             this.#values = [];
         }
-    }
-
-    formatDate(date) {
-        return date.toISOString().slice(0, 19).replace('T', ' '); // Format to 'YYYY-MM-DD HH:MM:SS'
     }
 
     set(data = {}) {
@@ -297,12 +300,32 @@ class Core extends GlobalFunctions {
         const sql = `UPDATE ${this.tableName} SET ${fields} WHERE id = ?`;
 
         try {
-            return await this.db.query(sql, this.#values); // Executes with parameterized values
+            let returnData = await this.db.runQuery(sql, this.#values);
+            await this.db.close();
+            return returnData;
         } catch (error) {
             console.error("Update Error:", error);
             throw error;
         } finally {
-            this.db.close();
+            this.#values = [];
+        }
+    }
+    getModelName() {
+        return this.#modelName;
+    }
+
+    async delete(id = null) {
+        if (!id) throw new Error('No ID provided for deletion.');
+        const sql = `DELETE FROM ${this.tableName} WHERE id =?`;
+        this.#values = [id];
+
+        try {
+            let returnData = await this.db.runQuery(sql, this.#values);
+            await this.db.close();
+            return returnData;
+        } catch (error) {
+            throw new Error(error);
+        } finally {
             this.#values = [];
         }
     }

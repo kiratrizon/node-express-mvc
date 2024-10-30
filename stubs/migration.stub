@@ -7,6 +7,9 @@ async function up() {
     const db = new DatabaseConnection();
 
     blueprint.id();
+    blueprint.string('email');
+    blueprint.string('username');
+    blueprint.string('password');
     blueprint.timestamp();
 
     const columns = blueprint.getColumns();

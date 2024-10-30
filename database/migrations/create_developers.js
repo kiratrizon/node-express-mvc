@@ -15,13 +15,12 @@ async function up() {
     const columns = blueprint.getColumns();
 
     try {
-        await db.runQuery(`DROP TABLE IF EXISTS ${tableName};`);
-        await db.runQuery(`CREATE TABLE ${tableName} (${columns});`);
+        await db.runQuery(`CREATE TABLE IF NOT EXISTS ${tableName} (${columns});`);
+        db.close();
         console.log(`Table ${tableName} created successfully.`);
     } catch (err) {
         console.error(`Error creating table ${tableName}:`, err);
     } finally {
-        db.close();
     }
 }
 

@@ -4,7 +4,7 @@ const DatabaseConnection = require('../database');
 
 async function up() {
     const blueprint = new Blueprint();
-    const tableName = '{{ tableName }}';
+    const tableName = 'developer_access_tokens';
     const db = new DatabaseConnection();
 
     blueprint.id();
@@ -27,7 +27,7 @@ async function up() {
 
     try {
         await db.runQuery(`CREATE TABLE IF NOT EXISTS ${tableName} (${columns});`);
-        await db.close();
+        db.close();
         console.log(`Table ${tableName} created successfully.`);
     } catch (err) {
         console.error(`Error creating table ${tableName}:`, err);

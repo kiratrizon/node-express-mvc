@@ -3,6 +3,7 @@ const GlobalFunctions = require('../Base/GlobalFunctions');
 
 class Core extends GlobalFunctions {
     #values;
+    #privateColumns = {};
     constructor(tableName) {
         super();
         this.tableName = tableName;
@@ -25,12 +26,12 @@ class Core extends GlobalFunctions {
 
         try {
             const data = await this.db.runQuery(sql, this.#values);
+            await this.db.close();
             return data[0] ? data[0] : null; // Ensure it returns null if no data found
         } catch (error) {
             console.error("Error executing query:", error);
             throw error;
         } finally {
-            this.db.close();
             this.#values = [];
         }
     }
@@ -75,6 +76,65 @@ class Core extends GlobalFunctions {
             sql: sqlConditions.length > 0 ? `WHERE ${sqlConditions.join(' AND ')}` : '',
             values: values
         };
+    }
+
+    async create(data = {}) {
+        const newData = Object.keys(data)
+            .filter(key => this.fillable.includes(key))
+            .reduce((acc, key) => {
+                acc[key] = data[key];
+                return acc;
+            }, {});
+
+        if (Object.keys(newData).length === 0) {
+            throw new Error('No fillable data provided.');
+        }
+
+        if (this.timestamps) {
+            const now = new Date();
+            newData.created_at = this.formatDate(now);
+            newData.updated_at = this.formatDate(now);
+        }
+
+        return await this.#insert(newData);
+    }
+
+    async #insert(data = {}) {
+        if (!data || Object.keys(data).length === 0) {
+            throw new Error('No data provided for insertion.');
+        }
+
+        const columns = Object.keys(data).join(', ');
+        const placeholders = Object.keys(data).map(() => '?').join(', ');
+
+        const sql = `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`;
+        this.#values = Object.values(data);
+
+        if (this.debug) {
+            console.log(sql);
+            console.log(this.#values);
+        }
+
+        try {
+            const result = await this.db.runQuery(sql, this.#values);
+            await this.db.close();
+            return result ?? null;
+        } catch (error) {
+            throw new Error(`Error inserting data: ${error.message}`);
+        } finally {
+            this.#values = [];
+        }
+    }
+
+    set(data = {}) {
+        let keys = Object.keys(data);
+        keys.forEach((ele) => {
+            this.#privateColumns[ele] = data[ele];
+        });
+    }
+
+    async save(data = {}) {
+        return await this.#insert(this.#privateColumns);
     }
 }
 

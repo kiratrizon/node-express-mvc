@@ -99,6 +99,7 @@ class Validator {
     async #validateUnique(value, table, key) {
         let sql = `SELECT ${key} FROM ${table} WHERE ${key} = ?`;
         let data = await this.database.runQuery(sql, [value]); // Await the query execution
+        await this.database.close();
         return data.length === 0; // Check if no records were found
     }
 
@@ -120,6 +121,11 @@ class Validator {
             this.old = returnKeys;
         }
         return returnData;
+    }
+
+    revoke() {
+        this.errors = {};
+        this.old = {};
     }
 
     /**

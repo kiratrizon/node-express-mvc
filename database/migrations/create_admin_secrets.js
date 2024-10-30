@@ -4,11 +4,11 @@ const DatabaseConnection = require('../database');
 
 async function up() {
     const blueprint = new Blueprint();
-    const tableName = '{{ tableName }}';
+    const tableName = 'admin_secrets';
     const db = new DatabaseConnection();
 
     blueprint.id();
-    let structure = Configure.read('auth.token_table_structure');
+    let structure = Configure.read('auth.secret_table_structure');
     let keys = Object.keys(structure);
     keys.forEach(element => {
         if (element != 'timestamp') {
@@ -27,7 +27,7 @@ async function up() {
 
     try {
         await db.runQuery(`CREATE TABLE IF NOT EXISTS ${tableName} (${columns});`);
-        await db.close();
+        db.close();
         console.log(`Table ${tableName} created successfully.`);
     } catch (err) {
         console.error(`Error creating table ${tableName}:`, err);

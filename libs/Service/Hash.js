@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
 class Hash {
@@ -5,12 +6,16 @@ class Hash {
         this.bcrypt = bcrypt;
     }
 
+    // SHA-1 hash, then bcrypt
     make(password) {
-        return this.bcrypt.hashSync(password, 10);
+        const sha1Hash = crypto.createHash('sha1').update(password).digest('hex');
+        return this.bcrypt.hashSync(sha1Hash, 10);
     }
 
+    // SHA-1 hash, then bcrypt check
     check(password, hash) {
-        return this.bcrypt.compareSync(password, hash);
+        const sha1Hash = crypto.createHash('sha1').update(password).digest('hex');
+        return this.bcrypt.compareSync(sha1Hash, hash);
     }
 }
 

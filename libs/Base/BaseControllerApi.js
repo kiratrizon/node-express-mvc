@@ -1,23 +1,55 @@
 const express = require('express');
 const LoadModel = require('../Service/LoadModel');
 const GlobalFunctions = require('./GlobalFunctions');
+const Configure = require('../Service/Configure');
+const Core = require('../Main/CoreClone');
 
 class BaseController extends GlobalFunctions {
-    allowedAuths = ['auth', 'guest'];
+    allowedAuths = ['bearer', 'basic', 'basicAccess'];
     data = {};
-    constructor() {
+    #modelName;
+    #tokenTable;
+    #privateDB;
+    constructor(modelName) {
         super();
+        this.#modelName = modelName;
+        this.#tokenTable = Configure.read(`auth.access_tokens.${this.#modelName}.table`);
         this.router = express.Router();
+        this.#privateDB = new Core(this.#tokenTable);
+        this.loadUses([modelName]);
     }
 
     // authentications
-    auth(role) {
-        return (req, res, next) => {
+    bearer(role) {
+        return async (req, res, next) => {
+            // let token = req.headers['basic_access'];
+            // if (!token) {
+            //     res.status(401).json({ message: 'Unauthorized' });
+            //     return;
+            // }
+            // let data = await this[this.#modelName].getUserByToken(token, 'bearer');
+            // if (!data) {
+            //     res.status(401).json({ message: 'Unauthorized' });
+            //     return;
+            // }
+            // req.user = data;
             return next();
         }
     }
-    guest(role) {
-        return (req, res, next) => {
+    basicAccess() {
+        return async (req, res, next) => {
+            let token = req.headers['basic_access'];
+            if (!token) {
+                res.status(401).json({ message: 'Unauthorized' });
+                return;
+            }
+            let data = await this[this.#modelName].getUserByToken(token);
+            if (!data) {
+                res.status(401).json({ message: 'Unauthorized' });
+                return;
+            }
+            delete data.password;
+            req.user = data;
             return next();
         }
     }
@@ -29,21 +61,23 @@ class BaseController extends GlobalFunctions {
     loadUses(models = []) {
         if (Array.isArray(models) && models.length > 0) {
             models.forEach(use => {
-                this[use] = LoadModel.init(use);
+                if (!this[use]) {
+                    this[use] = LoadModel.init(use);
+                }
             });
         }
     }
     get(prefix, functionUsed) {
-        this.router.get(`${this.prefix}${prefix}`, functionUsed.bind(this));
+        this.router.get(`${prefix}`, functionUsed.bind(this));
     }
     post(prefix, functionUsed) {
-        this.router.post(`${this.prefix}${prefix}`, functionUsed.bind(this));
+        this.router.post(`${prefix}`, functionUsed.bind(this));
     }
     put(prefix, functionUsed) {
-        this.router.put(`${this.prefix}${prefix}`, functionUsed.bind(this));
+        this.router.put(`${prefix}`, functionUsed.bind(this));
     }
     delete(prefix, functionUsed) {
-        this.router.delete(`${this.prefix}${prefix}`, functionUsed.bind(this));
+        this.router.delete(`${prefix}`, functionUsed.bind(this));
     }
 }
 

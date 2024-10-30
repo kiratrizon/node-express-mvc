@@ -27,55 +27,79 @@ class DatabaseConnection {
             this.connection.connect((err) => {
                 if (err) {
                     console.error('Error connecting to MySQL database:', err.message);
-                    process.exit(1);
-                } else {
+                    this.connection = null;
                 }
             });
         }
     }
 
     async runQuery(query, params = []) {
-        this.openConnection();
         const isSQLite = process.env.DATABASE === 'sqlite';
 
-        return new Promise((resolve, reject) => {
-            try {
-                if (isSQLite) {
-                    const stmt = this.connection.prepare(query);
-                    const isSelect = query.trim().toLowerCase().startsWith('select');
-                    const result = isSelect ? stmt.all(params) : stmt.run(params);
-                    resolve(result);
-                } else {
-                    this.connection.query(query, params, (err, results) => {
-                        if (err) reject(err);
-                        else resolve(results);
-                    });
-                }
-            } catch (err) {
-                reject(err);
+        try {
+            this.openConnection();
+
+            if (!this.connection) {
+                throw new Error('Database connection is not established.');
             }
-        });
+
+            if (isSQLite) {
+                const stmt = this.connection.prepare(query);
+                const isInsert = query.trim().toLowerCase().startsWith('insert');
+
+                if (isInsert) {
+                    stmt.run(params);
+                    const lastInsertId = stmt.lastInsertRowid;
+                    return lastInsertId;
+                } else {
+                    const result = stmt.all(params);
+                    return result;
+                }
+            } else {
+                return new Promise((resolve, reject) => {
+                    this.connection.query(query, params, (err, results) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            const isInsert = query.trim().toLowerCase().startsWith('insert');
+                            if (isInsert) {
+                                resolve(results.insertId);
+                            } else {
+                                resolve(results);
+                            }
+                        }
+                    });
+                });
+            }
+        } catch (err) {
+            throw err;
+        } finally {
+            await this.close();
+        }
     }
 
-    close() {
+
+    async close() {
         if (!this.connection) return;
 
         if (process.env.DATABASE === 'sqlite') {
             this.connection.close();
         } else {
-            this.connection.end((err) => {
-                if (err) {
-                    console.error('Error closing the MySQL connection:', err.message);
-                } else {
-                }
+            await new Promise((resolve, reject) => {
+                this.connection.end((err) => {
+                    if (err) {
+                        console.error('Error closing the MySQL connection:', err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
             });
         }
+
+        this.connection = null;
     }
+
 }
 
 module.exports = DatabaseConnection;
-
-process.on('exit', () => {
-    const db = new DatabaseConnection();
-    db.close();
-});
