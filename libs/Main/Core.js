@@ -174,12 +174,13 @@ class Core extends GlobalFunctions {
                     values.push(lowerBound, upperBound);
                     break;
                 case 'LIKE':
+                case 'NOT LIKE':
                 case '=':
+                case '!=':
                 case '>=':
                 case '<=':
                 case '>':
                 case '<':
-                case 'NOT LIKE':
                     sqlConditions.push(`${key} ${operator} ?`);
                     values.push(conditionValue);
                     break;

@@ -22,6 +22,7 @@ class BaseController extends GlobalFunctions {
     // authentications
     bearer(role) {
         return async (req, res, next) => {
+            console.log(req.headers);
             // let token = req.headers['basic_access'];
             // if (!token) {
             //     res.status(401).json({ message: 'Unauthorized' });

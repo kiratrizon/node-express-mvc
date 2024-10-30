@@ -88,6 +88,7 @@ class Tokenable extends Model {
             [`${tokenAlias}.token`]: ['=', token],
             [`${tokenAlias}.name`]: ['=', name],
             [`${tokenAlias}.expires_at`]: ['>', this.formatDate(new Date())],
+            [`${tokenAlias}.is_revoked`]: ['=', 0]
         };
         params['joins'] = [
             {
