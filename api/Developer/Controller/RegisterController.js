@@ -1,5 +1,4 @@
 const Validator = require('../../../libs/Middleware/Validator');
-const Configure = require('../../../libs/Service/Configure');
 const Hash = require('../../../libs/Service/Hash');
 const Controller = require('../Controller');
 
@@ -10,20 +9,9 @@ class RegisterController extends Controller {
   }
 
   initializeRoutes() {
-    this.middleware("guest");
-    this.get('/', this.getRegister);
     this.post('/', this.postRegister);
   }
 
-  getRegister(req, res) {
-    let data = {
-      title: "Register",
-      error: req.flash("error")[0] || {},
-      old: req.flash("old")[0] || {},
-      message: req.flash("message")[0] || false,
-    };
-    res.render("index", data);
-  }
   async postRegister(req, res) {
     const validate = await Validator.make(req.body, {
       username: "required|unique:developers",
@@ -34,9 +22,7 @@ class RegisterController extends Controller {
 
     // Check for validation failures
     if (fail) {
-      req.flash("error", validate.errors);
-      req.flash("old", validate.old);
-      return res.redirect('/developer/register');
+      return res.status(403).json({ error: validate.errors, old: validate.old });
     }
     let data = this.only(req.body, ["username", "email", "password"]);
     data.password = Hash.make(data.password);
@@ -51,15 +37,13 @@ class RegisterController extends Controller {
           header: "Account created successfully.",
           content: "This is an example mailer."
         });
-        req.flash("success", `Developer created successfully.`);
-        return res.redirect(req.auth().guard('developer').redirectFail());
+        return res.status(201).json({ error: false, message: `Developer created successfully.` });
       } else {
         await this.Developer.delete(developerID);
-        req.flash("old", req.body);
-        req.flash("message", `Developer secret not created.`);
+        return res.status(403).json({ error: true, message: `Developer secret not created.`, old: req.body });
       }
     }
-    return res.redirect('/developer/register');
+    return res.status(404).json({ error: true, message: `Developer not created.` });
   }
 
   getRouter() {

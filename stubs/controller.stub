@@ -1,4 +1,4 @@
-const Controller = require('../Controller');
+const Controller = require('../{{ controllerPath }}Controller.js');
 
 class {{ ControllerName }}Controller extends Controller {
   constructor() {
@@ -8,7 +8,7 @@ class {{ ControllerName }}Controller extends Controller {
   }
 
   initializeRoutes() {
-    this.router.get('/', this.get{{ ControllerName }}.bind(this));
+    this.get('/', this.get{{ ControllerName }});
   }
 
   get{{ ControllerName }}(req, res) {

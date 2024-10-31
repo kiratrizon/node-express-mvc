@@ -62,15 +62,15 @@ const constant = {
     token_expiration: 356,
     secret_table_structure: {
         user_id: { type: "integer", },
-        secret_id: { type: "string", },
-        secret_key: { type: "string", },
+        client_key: { type: "string", },
+        client_secret: { type: "string", },
         timestamp: true,
     },
     secrets: {
         "User": { table: "user_secrets", },
         "Admin": { table: "admin_secrets" },
         "Developer": { table: "developer_secrets" }
-    }
+    },
 };
 
 module.exports = constant;

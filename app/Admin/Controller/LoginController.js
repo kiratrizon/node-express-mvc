@@ -2,10 +2,8 @@ const Validator = require("../../../libs/Middleware/Validator");
 const Controller = require("../Controller");
 
 class LoginController extends Controller {
-    AppUse = ["Admin"];
     constructor() {
         super();
-        this.loadUses(this.AppUse || []);
         this.set("title", "Login");
         this.initializeRoutes();
     }

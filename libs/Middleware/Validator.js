@@ -84,6 +84,13 @@ class Validator {
                     returnData = false;
                 }
                 break;
+            case 'exists':
+                const isNotExist = await this.#validateExists(this.#data[key], ruleValue);
+                if (!isNotExist) {
+                    this.errors[key] = 'This value exist.';
+                    returnData = false;
+                }
+                break;
             default:
                 break;
         }
@@ -99,8 +106,21 @@ class Validator {
     async #validateUnique(value, table, key) {
         let sql = `SELECT ${key} FROM ${table} WHERE ${key} = ?`;
         let data = await this.database.runQuery(sql, [value]); // Await the query execution
-        await this.database.close();
         return data.length === 0; // Check if no records were found
+    }
+
+    async #validateExists(value, table) {
+        let keys = Object.keys(value);
+        let sql = `SELECT id from ${table} WHERE `;
+        let params = [];
+        let values = [];
+        keys.forEach(key => {
+            params.push(`${key} = ?`);
+            values.push(value[key]);
+        });
+        sql += params.join(' AND ');
+        let data = await this.database.runQuery(sql, values);
+        return data.length === 0;
     }
 
     /**

@@ -39,4 +39,18 @@
     </div>
 </div>
 
+<%
+if (message){ %>
+    <script src="/libraries/sweetalert2.all.min.js"></script>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: '<%= message %>',
+            showConfirmButton: false,
+            timer: 1500
+        })
+    </script>
+<% }
+%>
+
 <%- include('../../Defaults/footer') %>

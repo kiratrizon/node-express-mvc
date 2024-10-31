@@ -1,16 +1,12 @@
-const BaseController = require("../../libs/Base/BaseController");
+const BaseController = require("../../libs/Base/BaseControllerApi");
 class Controller extends BaseController {
   constructor() {
-    super();
-    this.loadUses([
-      "Admin"
-    ]);
-    this.user = "admin";
+    super('User');
   }
 
   middleware(type) {
     if (this.allowedAuths.includes(type)) {
-      this.router.use(this[type](this.user));
+      this.router.use(this[type]());
     } else {
       console.log("Invalid auth type");
     }

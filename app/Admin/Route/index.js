@@ -5,24 +5,37 @@ const path = require('path');
 const Configure = require('../../../libs/Service/Configure');
 
 const controllersPath = path.join(__dirname, '..', 'Controller');
-const home = `/${Configure.read('default.prefix_controller').toLowerCase()}`;
+const homePrefix = `/${Configure.read('default.prefix_controller').toLowerCase()}`;
 
-fs.readdir(controllersPath, (err, files) => {
-    if (err) {
-        console.error('Error reading controllers directory:', err);
-        return;
-    }
+function setupRoutes(dirPath, prefix = '') {
+    fs.readdir(dirPath, { withFileTypes: true }, (err, items) => {
+        if (err) {
+            console.error('Error reading controllers directory:', err);
+            return;
+        }
 
-    files.filter(file => file.endsWith('.js')).forEach((file) => {
-        const controllerPath = path.join(controllersPath, file);
+        items.forEach((item) => {
+            const itemPath = path.join(dirPath, item.name);
 
-        const controller = require(controllerPath);
+            if (item.isDirectory()) {
+                // If item is a directory, use its name as a prefix for nested routes
+                const nestedPrefix = `${prefix}/${item.name.toLowerCase()}`;
+                setupRoutes(itemPath, nestedPrefix);
+            } else if (item.isFile() && item.name.endsWith('.js')) {
+                // If item is a file, add it as a route
+                const controller = require(itemPath);
+                const routePath = `/${path.parse(item.name).name}`.toLowerCase();
+                let fileNameWithoutSuffix = routePath.replace('controller', '');
 
-        const routePath = `/${path.parse(file).name}`.toLowerCase();
-        let fileNameWithoutSuffix = routePath.replace('controller', '');
-        fileNameWithoutSuffix = fileNameWithoutSuffix === home ? '/' : fileNameWithoutSuffix;
-        router.use(fileNameWithoutSuffix, controller);
+                // Use root route if it matches the home prefix
+                fileNameWithoutSuffix = fileNameWithoutSuffix === homePrefix ? '/' : fileNameWithoutSuffix;
+                router.use(`${prefix}${fileNameWithoutSuffix}`, controller);
+            }
+        });
     });
-});
+}
+
+// Initialize the route setup with the base directory and no prefix
+setupRoutes(controllersPath);
 
 module.exports = router;

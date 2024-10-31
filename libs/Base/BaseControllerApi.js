@@ -20,7 +20,7 @@ class BaseController extends GlobalFunctions {
     }
 
     // authentications
-    bearer(role) {
+    bearer() {
         return async (req, res, next) => {
             console.log(req.headers);
             // let token = req.headers['basic_access'];
@@ -46,6 +46,7 @@ class BaseController extends GlobalFunctions {
             }
             let data = await this[this.#modelName].getUserByToken(token);
             if (!data) {
+                req.user = null;
                 res.status(401).json({ message: 'Unauthorized' });
                 return;
             }

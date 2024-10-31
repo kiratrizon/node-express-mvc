@@ -1,8 +1,8 @@
 <%- include('../../Defaults/header') %>
 <div class="container mt-5 d-flex justify-content-center">
-    <div id="admin_form">
+    <div id="user_form">
         <h2 class="text-center">User Register</h2>
-        <form action="/register" method="post">
+        <form action="/user/register" method="post">
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
                 <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" value="<%= old.username ?? '' %>">
@@ -33,10 +33,24 @@
             </div>
             <div class="d-flex justify-content-evenly align-items-center">
                 <button type="submit" class="btn btn-primary">Register</button>
-                <a href="/login">Login Here</a>
+                <a href="/user/login">Login Here</a>
             </div>
         </form>
     </div>
 </div>
+
+<%
+if (message){ %>
+    <script src="/libraries/sweetalert2.all.min.js"></script>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: '<%= message %>',
+            showConfirmButton: false,
+            timer: 1500
+        })
+    </script>
+<% }
+%>
 
 <%- include('../../Defaults/footer') %>

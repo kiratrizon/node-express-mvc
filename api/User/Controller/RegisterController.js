@@ -1,5 +1,4 @@
 const Validator = require('../../../libs/Middleware/Validator');
-const Configure = require('../../../libs/Service/Configure');
 const Hash = require('../../../libs/Service/Hash');
 const Controller = require('../Controller');
 
@@ -10,40 +9,27 @@ class RegisterController extends Controller {
   }
 
   initializeRoutes() {
-    this.middleware("guest");
-    this.get('/', this.getRegister);
     this.post('/', this.postRegister);
   }
 
-  getRegister(req, res) {
-    let data = {
-      title: "Register",
-      error: req.flash("error")[0] || {},
-      old: req.flash("old")[0] || {},
-      message: req.flash("message")[0] || false,
-    };
-    res.render("index", data);
-  }
   async postRegister(req, res) {
     const validate = await Validator.make(req.body, {
-      username: "required|unique:developers",
-      email: "required|email|unique:developers",
+      username: "required|unique:users",
+      email: "required|email|unique:users",
       password: "required|confirmed",
     });
     let fail = validate.fails();
 
     // Check for validation failures
     if (fail) {
-      req.flash("error", validate.errors);
-      req.flash("old", validate.old);
-      return res.redirect('/developer/register');
+      return res.status(403).json({ error: validate.errors, old: validate.old });
     }
     let data = this.only(req.body, ["username", "email", "password"]);
     data.password = Hash.make(data.password);
     // Model
-    let developerID = await this.Developer.create(data);
-    if (developerID) {
-      if (await this.Developer.createSecret(developerID)) {
+    let userID = await this.User.create(data);
+    if (userID) {
+      if (await this.User.createSecret(userID)) {
         let mailer = new this.mailer();
         await mailer.sendMail({
           to: data.email,
@@ -51,15 +37,13 @@ class RegisterController extends Controller {
           header: "Account created successfully.",
           content: "This is an example mailer."
         });
-        req.flash("success", `Developer created successfully.`);
-        return res.redirect(req.auth().guard('developer').redirectFail());
+        return res.status(201).json({ error: false, message: `User created successfully.` });
       } else {
-        await this.Developer.delete(developerID);
-        req.flash("old", req.body);
-        req.flash("message", `Developer secret not created.`);
+        await this.User.delete(userID);
+        return res.status(403).json({ error: true, message: `User secret not created.`, old: req.body });
       }
     }
-    return res.redirect('/developer/register');
+    return res.status(404).json({ error: true, message: `User not created.` });
   }
 
   getRouter() {

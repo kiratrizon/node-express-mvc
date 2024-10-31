@@ -6,9 +6,6 @@ const Controller = require('../Controller');
 class RegisterController extends Controller {
   constructor() {
     super();
-    this.loadUses([
-      'Admin'
-    ]);
     this.initializeRoutes();
   }
 
@@ -23,13 +20,14 @@ class RegisterController extends Controller {
       title: "Register",
       error: req.flash("error")[0] || {},
       old: req.flash("old")[0] || {},
+      message: req.flash("message")[0] || false,
     };
     res.render("index", data);
   }
   async postRegister(req, res) {
     const validate = await Validator.make(req.body, {
       username: "required|unique:admins",
-      email: "required|unique:admins",
+      email: "required|email|unique:admins",
       password: "required|confirmed",
     });
     let fail = validate.fails();
@@ -45,15 +43,21 @@ class RegisterController extends Controller {
     // Model
     let adminID = await this.Admin.create(data);
     if (adminID) {
-      let mailer = new this.mailer();
-      await mailer.sendMail({
-        to: data.email,
-        subject: "Welcome",
-        header: "Account created successfully.",
-        content: "This is an example mailer."
-      });
-      req.flash("success", `Admin created successfully.`);
-      return res.redirect(req.auth().guard('admin').redirectFail());
+      if (await this.Admin.createSecret(adminID)) {
+        let mailer = new this.mailer();
+        await mailer.sendMail({
+          to: data.email,
+          subject: "Welcome",
+          header: "Account created successfully.",
+          content: "This is an example mailer."
+        });
+        req.flash("success", `Admin created successfully.`);
+        return res.redirect(req.auth().guard('admin').redirectFail());
+      } else {
+        await this.Admin.delete(adminID);
+        req.flash("old", req.body);
+        req.flash("message", `Admin secret not created.`);
+      }
     }
     return res.redirect('/admin/register');
   }

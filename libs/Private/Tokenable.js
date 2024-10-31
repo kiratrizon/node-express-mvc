@@ -17,12 +17,12 @@ class Tokenable extends Model {
         if (!user_id) {
             throw new Error(`ID is required to generate a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore();
+        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'secrets');
         this.#tokenName = name;
         let token;
         let validate = true;
         do {
-            token = crypto.randomBytes(24).toString('hex');
+            token = crypto.randomBytes(name == 'token' ? 16 : (name == 'bearer' ? 32 : 24)).toString('hex');
             validate = await Validator.make({ token }, {
                 token: `required|unique:${Configure.read(`auth.access_tokens.${this.getModelName()}.table`)}`
             });
@@ -36,29 +36,27 @@ class Tokenable extends Model {
             throw new Error(`Failed to create token for ${this.getModelName()}`);
         }
     }
-    isTokenable() {
-        return this.#tokenable;
-    }
 
     async getSecret(user_id) {
-        this.#generatePrivateCore();
+        this.#generatePrivateCore('access_tokens');
         let paramsSecret = {};
         paramsSecret.conditions = {
             id: ['=', user_id],
         }
         let secret = await this.#privateCore.find(paramsSecret);
     }
-    #generatePrivateCore() {
-        if (!this.#privateCore) {
-            this.#privateCore = new Core(Configure.read(`auth.access_tokens.${this.getModelName()}.table`));
+    #generatePrivateCore(table) {
+        if (Configure.read(`auth.${table}.${this.getModelName()}.table`) === undefined) {
+            throw new Error(`Table name for ${this.getModelName()} is not configured in auth.${table}`);
         }
+        this.#privateCore = new Core(Configure.read(`auth.${table}.${this.getModelName()}.table`));
     }
 
     async getToken(id = null, name = 'token') {
         if (!id && !name) {
             throw new Error(`Either ID or name is required to retrieve a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore();
+        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'secrets');
         let params = {};
         params.conditions = {};
         if (id) {
@@ -80,9 +78,11 @@ class Tokenable extends Model {
         }
         const tokenTable = Configure.read(`auth.access_tokens.${alias}.table`);
         const tokenAlias = `${alias}Token`;
+        const secretTable = Configure.read(`auth.secrets.${alias}.table`);
+        const secretAlias = `${alias}Secret`;
         const params = {};
         params['fields'] = [
-            `${alias}.*`
+            `${alias}.*`, `${secretAlias}.client_key`, `${secretAlias}.client_secret`
         ];
         params['conditions'] = {
             [`${tokenAlias}.token`]: ['=', token],
@@ -98,10 +98,42 @@ class Tokenable extends Model {
                 conditions: [
                     `${alias}.id = ${tokenAlias}.user_id`
                 ]
+            },
+            {
+                table: secretTable,
+                as: secretAlias,
+                type: 'LEFT',
+                conditions: [
+                    `${alias}.id = ${secretAlias}.user_id`
+                ]
             }
         ];
         let data = await this.find('first', params);
         return data ?? false;
+    }
+
+    async createSecret(user_id = null) {
+        if (!user_id) {
+            throw new Error(`ID is required to generate a secret for ${this.getModelName()}`);
+        }
+        this.#generatePrivateCore('secrets');
+        let client_secret;
+        let client_key
+        let validate = true;
+        do {
+            client_secret = crypto.randomBytes(4).toString('hex');
+            client_key = crypto.randomBytes(4).toString('hex');
+            let secretData = { client_secret, client_key };
+            validate = await Validator.make({ secretData }, {
+                secretData: `exists:${Configure.read(`auth.secrets.${this.getModelName()}.table`)}`
+            });
+        } while (validate.fails());
+        this.#privateCore.set({ user_id, client_key, client_secret });
+        let data = await this.#privateCore.save();
+        if (data) {
+            return data;
+        }
+        return false;
     }
 }
 
