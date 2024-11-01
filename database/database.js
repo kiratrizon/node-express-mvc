@@ -46,10 +46,14 @@ class DatabaseConnection {
             if (isSQLite) {
                 const stmt = this.connection.prepare(query);
                 const isInsert = query.trim().toLowerCase().startsWith('insert');
+                const isCreateTable = query.trim().toLowerCase().startsWith('create table');
 
-                if (isInsert) {
+                if (isCreateTable) {
                     stmt.run(params);
-                    const lastInsertId = stmt.lastInsertRowid;
+                    return null;
+                } else if (isInsert) {
+                    const result = stmt.run(params);
+                    const lastInsertId = result.lastInsertRowid;
                     return lastInsertId;
                 } else {
                     const result = stmt.all(params);
@@ -77,7 +81,6 @@ class DatabaseConnection {
             await this.close();
         }
     }
-
 
     async close() {
         if (!this.connection) return;

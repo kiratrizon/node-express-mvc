@@ -260,7 +260,7 @@ class Core extends GlobalFunctions {
 
         try {
             const result = await this.db.runQuery(sql, this.#values);
-            this.#insertedId = result.lastInsertRowid ?? null;
+            this.#insertedId = result ?? null;
             await this.db.close();
             return result ?? null;
         } catch (error) {
