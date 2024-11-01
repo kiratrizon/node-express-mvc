@@ -1,6 +1,5 @@
 const app = require('./boot/start');
-const path = require('path');
-const fs = require('fs');
+require('dotenv').config();
 
 const adminRouter = require('../app/Admin/Route');
 const userRouter = require('../app/User/Route');
@@ -16,7 +15,7 @@ app.use('/', userRouter);
 app.use('/api', apiRoutes);
 
 app.get('/debug', (req, res) => {
-    if (true) {
+    if (process.env.SESSION_DEBUG === 'true') {
         return res.send(req.session.auth);
     }
 });

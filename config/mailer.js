@@ -1,6 +1,8 @@
+require('dotenv').config();
+
 const constant = {
-    user: 'schedulerascbislig@gmail.com',
-    pass: 'sboffswwrexhrlqr',
+    user: process.env.MAILER_USER || '',
+    pass: process.env.MAILER_APP_KEY || '',
 };
 
 module.exports = constant;
