@@ -49,14 +49,29 @@ class BaseController extends GlobalFunctions {
     get(prefix, functionUsed) {
         this.router.get(`${prefix}`, functionUsed.bind(this));
     }
+
     post(prefix, functionUsed) {
         this.router.post(`${prefix}`, functionUsed.bind(this));
     }
+
     put(prefix, functionUsed) {
         this.router.put(`${prefix}`, functionUsed.bind(this));
     }
+
     delete(prefix, functionUsed) {
         this.router.delete(`${prefix}`, functionUsed.bind(this));
+    }
+
+    patch(prefix, functionUsed) {
+        this.router.patch(`${prefix}`, functionUsed.bind(this));
+    }
+
+    options(prefix, functionUsed) {
+        this.router.options(`${prefix}`, functionUsed.bind(this));
+    }
+
+    head(prefix, functionUsed) {
+        this.router.head(`${prefix}`, functionUsed.bind(this));
     }
 }
 

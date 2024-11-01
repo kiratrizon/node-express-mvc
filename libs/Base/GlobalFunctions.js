@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const mailer = require('nodemailer');
 const NodeMailer = require('../../vendor/node-mailer');
 const Configure = require('../Service/Configure');
+require('dotenv').config();
 
 class GlobalFunctions {
     constructor() {
@@ -51,6 +51,9 @@ class GlobalFunctions {
     }
 
     log(value, destination, text = "") {
+        if (process.env.NODE_ENV === 'production') {
+            return;
+        }
         const dirPath = path.join(__dirname, '..', '..', 'tmp');
         const logPath = path.join(dirPath, `${destination}.log`);
         const timestamp = this.formatTimestamp();

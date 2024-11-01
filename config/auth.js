@@ -71,6 +71,20 @@ const constant = {
         "Admin": { table: "admin_secrets" },
         "Developer": { table: "developer_secrets" }
     },
-};
+    bearer_table_structure: {
+        secret_id: { type: "integer", },
+        name: { type: "string", },
+        token: { type: "string", },
+        expires_at: { type: "datetime", },
+        last_used_at: { type: "datetime", },
+        is_revoked: { type: "boolean", default: 0 },
+        timestamp: true,
+    },
+    bearer_tokens: {
+        "User": { table: "user_bearers" },
+        "Admin": { table: "admin_bearers" },
+        "Developer": { table: "developer_bearers" }
+    },
+}
 
 module.exports = constant;

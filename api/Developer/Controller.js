@@ -6,7 +6,7 @@ class Controller extends BaseController {
 
   middleware(type) {
     if (this.allowedAuths.includes(type)) {
-      this.router.use(this[type]());
+      this.executeAuths(type);
     } else {
       console.log("Invalid auth type");
     }

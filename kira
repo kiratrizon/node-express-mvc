@@ -64,7 +64,27 @@ function createModel(className) {
 
 function makeMigration(tableName, type, entity = false) {
     const migrationDir = path.join(__dirname, 'database', 'migrations');
-    const stubPath = path.join(__dirname, 'stubs', `${entity ? 'migration.stub' : `${type === 'token' ? 'token.stub' : `${type === 'secret' ? 'secret.stub' : 'migration2.stub'}`}`}`);
+    let stubFile;
+
+    switch (true) {
+        case !!entity:
+            stubFile = 'migration.stub';
+            break;
+        case type === 'token':
+            stubFile = 'token.stub';
+            break;
+        case type === 'secret':
+            stubFile = 'secret.stub';
+            break;
+        case type === 'bearer':
+            stubFile = 'bearer.stub';
+            break;
+        default:
+            stubFile = 'migration2.stub';
+            break;
+    }
+
+    const stubPath = path.join(__dirname, 'stubs', stubFile);
 
     if (!fs.existsSync(migrationDir)) {
         fs.mkdirSync(migrationDir, { recursive: true });
@@ -244,6 +264,12 @@ if (!command) {
                 const tokenKeys = Object.values(Configure.read('auth.access_tokens'));
                 tokenKeys.forEach((ele) => {
                     makeMigration(ele.table, 'token');
+                });
+                break;
+            case 'bearer-tables':
+                const bearerKeys = Object.values(Configure.read('auth.bearer_tokens'));
+                bearerKeys.forEach((ele) => {
+                    makeMigration(ele.table, 'bearer');
                 });
                 break;
             case 'secret':

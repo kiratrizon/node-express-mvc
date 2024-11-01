@@ -17,7 +17,7 @@ class Tokenable extends Model {
         if (!user_id) {
             throw new Error(`ID is required to generate a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'secrets');
+        this.#generatePrivateCore('access_tokens');
         this.#tokenName = name;
         let token;
         let validate = true;
@@ -37,13 +37,32 @@ class Tokenable extends Model {
         }
     }
 
-    async getSecret(user_id) {
-        this.#generatePrivateCore('access_tokens');
+    async getSecretId(client_key, client_secret) {
+        const secretTable = Configure.read(`auth.secrets.${this.getModelName()}.table`);
+        const secretAlias = `${this.getModelName()}Secret`;
+        const alias = this.getModelName();
+
         let paramsSecret = {};
+        paramsSecret['fields'] = [
+            `${secretAlias}.id as secret_id`, `${alias}.*`
+        ];
         paramsSecret.conditions = {
-            id: ['=', user_id],
+            [`${secretAlias}.client_key`]: ['=', client_key],
+            [`${secretAlias}.client_secret`]: ['=', client_secret]
         }
-        let secret = await this.#privateCore.find(paramsSecret);
+        paramsSecret['joins'] = [
+            {
+                table: secretTable,
+                as: secretAlias,
+                conditions: [
+                    `${alias}.id = ${secretAlias}.user_id`
+                ],
+                type: 'LEFT'
+            }
+        ];
+        let secret = await this.find('first', paramsSecret);
+        if (secret) delete secret.password;
+        return secret ?? false;
     }
     #generatePrivateCore(table) {
         if (Configure.read(`auth.${table}.${this.getModelName()}.table`) === undefined) {
@@ -53,10 +72,11 @@ class Tokenable extends Model {
     }
 
     async getToken(id = null, name = 'token') {
+        let allowedAuths = ['token', 'bearer'];
         if (!id && !name) {
             throw new Error(`Either ID or name is required to retrieve a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'secrets');
+        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'bearer_tokens');
         let params = {};
         params.conditions = {};
         if (id) {
@@ -66,7 +86,7 @@ class Tokenable extends Model {
             params.conditions.name = ['=', name];
         }
         let token = await this.#privateCore.find(params);
-        if (!token || new Date(token.expires_at) < new Date()) {
+        if (!token ?? new Date(token.expires_at) < new Date()) {
             return await this.createToken(id, name);
         }
         return token.token;
@@ -134,6 +154,107 @@ class Tokenable extends Model {
             return data;
         }
         return false;
+    }
+
+    async getBearer(secret_id, name = 'bearer') {
+        this.#generatePrivateCore('bearer_tokens');
+        const bearerTable = this.#privateCore.tableName;
+        const alias = this.getModelName();
+        const bearerAlias = `${alias}Bearer`;
+        const secretTable = Configure.read(`auth.secrets.${this.getModelName()}.table`);
+        const secretAlias = `${alias}Secret`;
+        let params = {};
+        params['fields'] = [
+            `${bearerAlias}.token`
+        ];
+        params['conditions'] = {
+            [`${secretAlias}.id`]: ['=', secret_id],
+            [`${bearerAlias}.name`]: ['=', name],
+            [`${bearerAlias}.expires_at`]: ['>', this.formatDate(new Date())],
+            [`${bearerAlias}.is_revoked`]: ['=', 0]
+        };
+        params['joins'] = [
+            {
+                table: secretTable,
+                as: secretAlias,
+                type: 'LEFT',
+                conditions: [
+                    `${alias}.id = ${secretAlias}.user_id`
+                ]
+            },
+            {
+                table: bearerTable,
+                as: bearerAlias,
+                type: 'LEFT',
+                conditions: [
+                    `${secretAlias}.id = ${bearerAlias}.secret_id`
+                ]
+            }
+        ];
+        const bearer = await this.find('first', params);
+        if (!bearer) {
+            return await this.#createBearer(secret_id, name);
+        }
+        return bearer.token;
+    }
+
+    async #createBearer(secret_id, name = 'bearer', expires_at = Configure.read('auth.token_expiration')) {
+        this.#generatePrivateCore('bearer_tokens');
+        let token;
+        let validate;
+        do {
+            token = this.generateRandomToken(32);
+            validate = await Validator.make({ token }, {
+                token: `unique:${this.#privateCore.tableName}`
+            });
+        }
+        while (validate.fails());
+        expires_at = this.getFutureDate(expires_at);
+        this.#privateCore.set({ secret_id, token, name, expires_at });
+        let data = await this.#privateCore.save();
+        return data ? token : false;
+    }
+
+    generateRandomToken(length = 16) {
+        return crypto.randomBytes(length).toString('hex');
+    }
+
+    async getUserByBearer(bearer, name = 'bearer') {
+        const alias = this.getModelName();
+        const bearerTable = Configure.read(`auth.bearer_tokens.${alias}.table`);
+        const bearerAlias = `${alias}Bearer`;
+        const secretTable = Configure.read(`auth.secrets.${alias}.table`);
+        const secretAlias = `${alias}Secret`;
+        const params = {};
+        params['fields'] = [
+            `${alias}.*`
+        ];
+        params['conditions'] = {
+            [`${bearerAlias}.token`]: ['=', bearer],
+            [`${bearerAlias}.name`]: ['=', name],
+            [`${bearerAlias}.expires_at`]: ['>', this.formatDate(new Date())],
+            [`${bearerAlias}.is_revoked`]: ['=', 0]
+        };
+        params['joins'] = [
+            {
+                table: bearerTable,
+                as: bearerAlias,
+                type: 'LEFT',
+                conditions: [
+                    `${alias}.id = ${bearerAlias}.secret_id`
+                ]
+            },
+            {
+                table: secretTable,
+                as: secretAlias,
+                type: 'LEFT',
+                conditions: [
+                    `${secretAlias}.id = ${bearerAlias}.secret_id`
+                ]
+            }
+        ];
+        let data = await this.find('first', params);
+        return data ?? false;
     }
 }
 

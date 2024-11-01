@@ -58,7 +58,9 @@ class Core extends GlobalFunctions {
 
         try {
             const data = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
+            if (data.length === 0) {
+                return null;
+            }
             return type === 'first' ? data[0] : data;
         } catch (error) {
             console.error("Error executing query:", error);
