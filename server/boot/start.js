@@ -90,7 +90,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
     res.locals.config = (value) => Configure.read(value);
     res.locals.auth = () => new Auth(req);
-    req.auth = () => new Auth(req);
+    res.auth = () => new Auth(req);
     req.uriPath = req.path.split('/');
     req.uriPath.shift();
     const routeSource = Object.keys(guards);

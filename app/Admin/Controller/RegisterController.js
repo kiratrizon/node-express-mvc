@@ -43,21 +43,15 @@ class RegisterController extends Controller {
     // Model
     let adminID = await this.Admin.create(data);
     if (adminID) {
-      if (await this.Admin.createSecret(adminID)) {
-        let mailer = new this.mailer();
-        await mailer.sendMail({
-          to: data.email,
-          subject: "Welcome",
-          header: "Account created successfully.",
-          content: "This is an example mailer."
-        });
-        req.flash("success", `Admin created successfully.`);
-        return res.redirect(req.auth().guard('admin').redirectFail());
-      } else {
-        await this.Admin.delete(adminID);
-        req.flash("old", req.body);
-        req.flash("message", `Admin secret not created.`);
-      }
+      let mailer = new this.mailer();
+      await mailer.sendMail({
+        to: data.email,
+        subject: "Welcome",
+        header: "Account created successfully.",
+        content: "This is an example mailer."
+      });
+      req.flash("success", `Admin created successfully.`);
+      return res.redirect(res.auth().guard('admin').redirectFail());
     }
     return res.redirect('/admin/register');
   }

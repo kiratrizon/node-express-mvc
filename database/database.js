@@ -39,25 +39,29 @@ class DatabaseConnection {
         try {
             this.openConnection();
 
+            if (this.debugger) {
+                console.log('Query:', query);
+                console.log('Params:', params);
+            }
             if (!this.connection) {
                 throw new Error('Database connection is not established.');
             }
 
             if (isSQLite) {
                 const stmt = this.connection.prepare(query);
-                const isInsert = query.trim().toLowerCase().startsWith('insert');
-                const isCreateTable = query.trim().toLowerCase().startsWith('create table');
+                const queryType = query.trim().toLowerCase().split(' ')[0];
 
-                if (isCreateTable) {
+                if (queryType === 'create') {
                     stmt.run(params);
                     return null;
-                } else if (isInsert) {
+                } else if (queryType === 'insert') {
                     const result = stmt.run(params);
-                    const lastInsertId = result.lastInsertRowid;
-                    return lastInsertId;
+                    return result.lastInsertRowid;
+                } else if (queryType === 'update' || queryType === 'delete') {
+                    const result = stmt.run(params);
+                    return result.changes;
                 } else {
-                    const result = stmt.all(params);
-                    return result;
+                    return stmt.all(params);
                 }
             } else {
                 return new Promise((resolve, reject) => {
@@ -65,9 +69,11 @@ class DatabaseConnection {
                         if (err) {
                             reject(err);
                         } else {
-                            const isInsert = query.trim().toLowerCase().startsWith('insert');
-                            if (isInsert) {
+                            const queryType = query.trim().toLowerCase().split(' ')[0];
+                            if (queryType === 'insert') {
                                 resolve(results.insertId);
+                            } else if (queryType === 'update' || queryType === 'delete') {
+                                resolve(results.affectedRows);
                             } else {
                                 resolve(results);
                             }

@@ -11,7 +11,6 @@ class Core extends GlobalFunctions {
         super();
         this.tableName = tableName;
         this.db = new DatabaseConnection();
-        this.debug = this.db.debugger;
         this.#values = [];
         this.#modelName = ''; // Initialize modelName
     }
@@ -51,11 +50,6 @@ class Core extends GlobalFunctions {
                 throw new Error(`Unsupported find type: ${type}`);
         }
 
-        if (this.debug) {
-            console.log("SQL Query:", sql);
-            console.log("Query Values:", this.#values);
-        }
-
         try {
             const data = await this.db.runQuery(sql, this.#values);
             if (data.length === 0) {
@@ -77,14 +71,8 @@ class Core extends GlobalFunctions {
 
         const sql = `SELECT * FROM ${this.tableName} ${builtConditions.sql} LIMIT 1;`;
 
-        if (this.debug) {
-            console.log("SQL Query:", sql);
-            console.log("Query Values:", this.#values);
-        }
-
         try {
             const data = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
             return data[0] || null;
         } catch (error) {
             console.error("Error executing query:", error);
@@ -222,24 +210,12 @@ class Core extends GlobalFunctions {
     }
 
     async create(data = {}) {
-        const newData = Object.keys(data)
-            .filter(key => this.fillable.includes(key))
-            .reduce((acc, key) => {
-                acc[key] = data[key];
-                return acc;
-            }, {});
-
-        if (Object.keys(newData).length === 0) {
-            throw new Error('No fillable data provided.');
-        }
-
-        if (this.timestamps) {
-            const now = new Date();
-            newData.created_at = this.formatDate(now);
-            newData.updated_at = this.formatDate(now);
-        }
-
-        return await this.#insert(newData);
+        this.#privateColumns = {};
+        this.set(data);
+        const newData = {};
+        this.fillable.forEach(column => newData[column] = this.#privateColumns[column]);
+        this.#privateColumns = newData;
+        return await this.save();
     }
 
     async #insert(data = {}) {
@@ -253,19 +229,13 @@ class Core extends GlobalFunctions {
         const sql = `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`;
         this.#values = Object.values(data);
 
-        if (this.debug) {
-            console.log(sql);
-            console.log(this.#values);
-        }
-
         try {
             const result = await this.db.runQuery(sql, this.#values);
-            this.#insertedId = result ?? null;
-            await this.db.close();
             return result ?? null;
         } catch (error) {
             throw new Error(`Error inserting data: ${error.message}`);
         } finally {
+            this.#privateColumns = {};
             this.#values = [];
         }
     }
@@ -278,38 +248,47 @@ class Core extends GlobalFunctions {
     }
 
     async save(data = {}) {
-
+        if (Object.keys(data).length > 0) {
+            this.set(data);
+        }
+        if (this.timestamps) {
+            const now = new Date();
+            this.#privateColumns.updated_at = this.formatDate(now);
+            this.#privateColumns.created_at = this.formatDate(now);
+        }
         if (!this.#privateColumns.id) {
             return await this.#insert(this.#privateColumns);
         } else {
+            if (this.timestamps) {
+                delete this.#privateColumns.created_at;
+            }
             return await this.#update(this.#privateColumns);
         }
     }
 
     async #update() {
-        this.#values = []; // Clear values to ensure no old data is reused
+        this.#values = [];
 
         const fields = Object.entries(this.#privateColumns)
             .filter(([key]) => key !== 'id')
             .map(([key, value]) => {
-                this.#values.push(value); // Collect values in order
-                return `${key} = ?`; // Set placeholders
+                this.#values.push(value);
+                return `${key} = ?`;
             })
             .join(", ");
 
-        // Add the id to values for the WHERE clause
         this.#values.push(this.#privateColumns.id);
 
         const sql = `UPDATE ${this.tableName} SET ${fields} WHERE id = ?`;
 
         try {
             let returnData = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
             return returnData;
         } catch (error) {
             console.error("Update Error:", error);
             throw error;
         } finally {
+            this.#privateColumns = {};
             this.#values = [];
         }
     }
@@ -324,7 +303,6 @@ class Core extends GlobalFunctions {
 
         try {
             let returnData = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
             return returnData;
         } catch (error) {
             throw new Error(error);

@@ -4,29 +4,25 @@ const GlobalFunctions = require('../Base/GlobalFunctions');
 class Core extends GlobalFunctions {
     #values;
     #privateColumns = {};
+    timestamps = true;
     constructor(tableName) {
         super();
         this.tableName = tableName;
         this.db = new DatabaseConnection();
-        this.debug = this.db.debugger;
         this.#values = [];
     }
 
     async find(options) {
-        let sql = `SELECT `;
+        let sql = `SELECT`;
+        let fields = options.fields || [];
         const conditions = options.conditions || {};
         const builtConditions = this.buildConditions(conditions);
         this.#values.push(...builtConditions.values);
-        sql += `* FROM ${this.tableName} ${builtConditions.sql} LIMIT 1`.trim() + ";";
-
-        if (this.debug) {
-            console.log("SQL Query:", sql);
-            console.log("Query Values:", this.#values);
-        }
+        sql += ` ${fields.join(', ')} ` || ' * ';
+        sql += `FROM ${this.tableName} ${builtConditions.sql} LIMIT 1`.trim() + ";";
 
         try {
             const data = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
             return data[0] ? data[0] : null; // Ensure it returns null if no data found
         } catch (error) {
             console.error("Error executing query:", error);
@@ -73,30 +69,9 @@ class Core extends GlobalFunctions {
         });
 
         return {
-            sql: sqlConditions.length > 0 ? `WHERE ${sqlConditions.join(' AND ')}` : '',
+            sql: (sqlConditions.length > 0 ? `WHERE ${sqlConditions.join(' AND ')}` : '').trim(),
             values: values
         };
-    }
-
-    async create(data = {}) {
-        const newData = Object.keys(data)
-            .filter(key => this.fillable.includes(key))
-            .reduce((acc, key) => {
-                acc[key] = data[key];
-                return acc;
-            }, {});
-
-        if (Object.keys(newData).length === 0) {
-            throw new Error('No fillable data provided.');
-        }
-
-        if (this.timestamps) {
-            const now = new Date();
-            newData.created_at = this.formatDate(now);
-            newData.updated_at = this.formatDate(now);
-        }
-
-        return await this.#insert(newData);
     }
 
     async #insert(data = {}) {
@@ -117,11 +92,11 @@ class Core extends GlobalFunctions {
 
         try {
             const result = await this.db.runQuery(sql, this.#values);
-            await this.db.close();
-            return result ?? null;
-        } catch (error) {
-            throw new Error(`Error inserting data: ${error.message}`);
+            return result;
+        } catch {
+            return null;
         } finally {
+            this.#privateColumns = {};
             this.#values = [];
         }
     }
@@ -134,7 +109,49 @@ class Core extends GlobalFunctions {
     }
 
     async save(data = {}) {
-        return await this.#insert(this.#privateColumns);
+        if (Object.keys(data).length > 0) {
+            this.set(data);
+        }
+        if (this.timestamps) {
+            const now = new Date();
+            this.#privateColumns.updated_at = this.formatDate(now);
+            this.#privateColumns.created_at = this.formatDate(now);
+        }
+        if (!this.#privateColumns.id) {
+            return await this.#insert(this.#privateColumns);
+        } else {
+            if (this.timestamps) {
+                delete this.#privateColumns.created_at;
+            }
+            return await this.#update(this.#privateColumns);
+        }
+    }
+
+    async #update() {
+        this.#values = [];
+
+        const fields = Object.entries(this.#privateColumns)
+            .filter(([key]) => key !== 'id')
+            .map(([key, value]) => {
+                this.#values.push(value);
+                return `${key} = ?`;
+            })
+            .join(", ");
+
+        this.#values.push(this.#privateColumns.id);
+
+        const sql = `UPDATE ${this.tableName} SET ${fields} WHERE id = ?`;
+
+        try {
+            let returnData = await this.db.runQuery(sql, this.#values);
+            return returnData;
+        } catch (error) {
+            console.error("Update Error:", error);
+            throw error;
+        } finally {
+            this.#privateColumns = {};
+            this.#values = [];
+        }
     }
 }
 

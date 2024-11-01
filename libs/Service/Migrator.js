@@ -12,7 +12,6 @@ class Migrator {
         for (const sql of this.sql) {
             try {
                 await this.db.runQuery(sql);
-                await this.db.close();
             } catch (error) {
                 console.error("Error executing migration:", error.message);
             }

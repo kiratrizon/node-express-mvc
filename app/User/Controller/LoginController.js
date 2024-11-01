@@ -29,16 +29,13 @@ class LoginController extends Controller {
         if (fail) {
             req.flash("error", validate.errors);
             req.flash("old", validate.old);
-            return res.redirect(req.auth().guard("user").redirectFail());
+            return res.redirect(res.auth().guard("user").redirectFail());
         }
-        let attempt = await req
-            .auth()
-            .guard("user")
-            .attempt({ username: req.body.username, password: req.body.password });
+        let attempt = await res.auth().guard("user").attempt({ username: req.body.username, password: req.body.password });
         if (attempt) {
-            return res.redirect(req.auth().guard("user").redirectAuth());
+            return res.redirect(res.auth().guard("user").redirectAuth());
         }
-        return res.redirect(req.auth().guard("user").redirectFail());
+        return res.redirect(res.auth().guard("user").redirectFail());
     }
 
     getRouter() {

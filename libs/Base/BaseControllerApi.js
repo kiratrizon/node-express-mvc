@@ -3,7 +3,7 @@ const LoadModel = require('../Service/LoadModel');
 const GlobalFunctions = require('./GlobalFunctions');
 const Configure = require('../Service/Configure');
 const TokenAuth = require('../Middleware/TokenAuth');
-
+const IdGenerator = require('../Private/IdGenerator');
 class BaseController extends GlobalFunctions {
     allowedAuths = ['bearer', 'basic', 'basicAccess'];
     data = {};
@@ -41,8 +41,10 @@ class BaseController extends GlobalFunctions {
                 res.status(401).json({ message: 'Unauthorized' });
                 return;
             }
-            delete data.password;
-            req.bearerAuth = () => new TokenAuth(data);
+            const bearerId = data.bearer_id;
+            delete data.bearer_id;
+            res.bearerId = () => new IdGenerator(bearerId).id();
+            res.bearerAuth = () => new TokenAuth(data);
             next();
         }
     }
@@ -70,12 +72,16 @@ class BaseController extends GlobalFunctions {
                 res.status(401).json({ message: 'Unauthorized' });
                 return;
             }
-            let user = await this[this.#modelName].getSecretId(client_key, client_secret);
+            let user = await this[this.#modelName].getUserBySecret(client_key, client_secret);
             if (!user) {
                 res.status(401).json({ message: 'Unauthorized' });
                 return;
             }
-            req.basicAuth = () => new TokenAuth(user);
+
+            const secretId = user.secret_id;
+            delete user.secret_id;
+            res.secretId = () => new IdGenerator(secretId).id();
+            res.basicAuth = () => new TokenAuth(user);
             next();
         };
     }
@@ -89,13 +95,14 @@ class BaseController extends GlobalFunctions {
             }
             let data = await this[this.#modelName].getUserByToken(token);
             if (!data) {
-                req.user = null;
                 res.status(401).json({ message: 'Unauthorized' });
                 return;
             }
-            delete data.password;
-            req.tokenAuth = () => new TokenAuth(data);
-            return next();
+            const tokenId = data.token_id;
+            delete data.token_id;
+            res.tokenId = () => new IdGenerator(tokenId).id();
+            res.tokenAuth = () => new TokenAuth(data);
+            next();
         }
     }
     // end of auitentications

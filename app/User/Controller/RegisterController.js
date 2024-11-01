@@ -43,21 +43,15 @@ class RegisterController extends Controller {
     // Model
     let userID = await this.User.create(data);
     if (userID) {
-      if (await this.User.createSecret(userID)) {
-        let mailer = new this.mailer();
-        await mailer.sendMail({
-          to: data.email,
-          subject: "Welcome",
-          header: "Account created successfully.",
-          content: "This is an example mailer."
-        });
-        req.flash("success", `User created successfully.`);
-        return res.redirect(req.auth().guard('user').redirectFail());
-      } else {
-        await this.User.delete(userID);
-        req.flash("old", req.body);
-        req.flash("message", `User secret not created.`);
-      }
+      let mailer = new this.mailer();
+      await mailer.sendMail({
+        to: data.email,
+        subject: "Welcome",
+        header: "Account created successfully.",
+        content: "This is an example mailer."
+      });
+      req.flash("success", `User created successfully.`);
+      return res.redirect(res.auth().guard('user').redirectFail());
     }
     return res.redirect('/user/register');
   }

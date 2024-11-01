@@ -16,7 +16,6 @@ async function up() {
 
     try {
         await db.runQuery(`CREATE TABLE IF NOT EXISTS ${tableName} (${columns});`);
-        await db.close();
         console.log(`Table ${tableName} created successfully.`);
     } catch (err) {
         console.error(`Error creating table ${tableName}:`, err);

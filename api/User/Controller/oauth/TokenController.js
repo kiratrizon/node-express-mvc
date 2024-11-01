@@ -13,7 +13,7 @@ class TokenController extends Controller {
   }
 
   async getToken(req, res) {
-    let token = await this.getMain().getBearer(req.basicAuth().user().secret_id);
+    let token = await this.getMain().getBearer(res.secretId());
     res.status(200).json({ token: token });
   }
 

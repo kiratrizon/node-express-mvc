@@ -8,7 +8,7 @@ class Tokenable extends Model {
     #tokenName;
     token;
     #tokenable = true;
-    #privateCore = null;
+    #tableUsed = null;
     constructor(tableName) {
         super(tableName);
     }
@@ -17,7 +17,7 @@ class Tokenable extends Model {
         if (!user_id) {
             throw new Error(`ID is required to generate a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore('access_tokens');
+        this.#setTableUsed('access_tokens');
         this.#tokenName = name;
         let token;
         let validate = true;
@@ -28,8 +28,8 @@ class Tokenable extends Model {
             });
         } while (validate.fails());
         let expires_at = this.getFutureDate(expires);
-        this.#privateCore.set({ user_id, token, name, expires_at });
-        let data = await this.#privateCore.save();
+        this.#tableUsed.set({ user_id, token, name, expires_at });
+        let data = await this.#tableUsed.save();
         if (data) {
             return token;
         } else {
@@ -37,7 +37,7 @@ class Tokenable extends Model {
         }
     }
 
-    async getSecretId(client_key, client_secret) {
+    async getUserBySecret(client_key, client_secret) {
         const secretTable = Configure.read(`auth.secrets.${this.getModelName()}.table`);
         const secretAlias = `${this.getModelName()}Secret`;
         const alias = this.getModelName();
@@ -64,11 +64,11 @@ class Tokenable extends Model {
         if (secret) delete secret.password;
         return secret ?? false;
     }
-    #generatePrivateCore(table) {
+    #setTableUsed(table) {
         if (Configure.read(`auth.${table}.${this.getModelName()}.table`) === undefined) {
             throw new Error(`Table name for ${this.getModelName()} is not configured in auth.${table}`);
         }
-        this.#privateCore = new Core(Configure.read(`auth.${table}.${this.getModelName()}.table`));
+        this.#tableUsed = new Core(Configure.read(`auth.${table}.${this.getModelName()}.table`));
     }
 
     async getToken(id = null, name = 'token') {
@@ -76,7 +76,7 @@ class Tokenable extends Model {
         if (!id && !name) {
             throw new Error(`Either ID or name is required to retrieve a token for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore(name == 'token' ? 'access_tokens' : 'bearer_tokens');
+        this.#setTableUsed(name == 'token' ? 'access_tokens' : 'bearer_tokens');
         let params = {};
         params.conditions = {};
         if (id) {
@@ -85,7 +85,7 @@ class Tokenable extends Model {
         if (name) {
             params.conditions.name = ['=', name];
         }
-        let token = await this.#privateCore.find(params);
+        let token = await this.#tableUsed.find(params);
         if (!token ?? new Date(token.expires_at) < new Date()) {
             return await this.createToken(id, name);
         }
@@ -102,7 +102,7 @@ class Tokenable extends Model {
         const secretAlias = `${alias}Secret`;
         const params = {};
         params['fields'] = [
-            `${alias}.*`, `${secretAlias}.client_key`, `${secretAlias}.client_secret`
+            `${alias}.*`, `${tokenAlias}.id as token_id`
         ];
         params['conditions'] = {
             [`${tokenAlias}.token`]: ['=', token],
@@ -129,14 +129,19 @@ class Tokenable extends Model {
             }
         ];
         let data = await this.find('first', params);
-        return data ?? false;
+        if (!data) {
+            return false;
+        }
+        delete data.password;
+        data['client_service'] = await this.getUserSecret(data.id)
+        return data;
     }
 
-    async createSecret(user_id = null) {
+    async #createSecret(user_id = null) {
         if (!user_id) {
             throw new Error(`ID is required to generate a secret for ${this.getModelName()}`);
         }
-        this.#generatePrivateCore('secrets');
+        this.#setTableUsed('secrets');
         let client_secret;
         let client_key
         let validate = true;
@@ -148,8 +153,8 @@ class Tokenable extends Model {
                 secretData: `exists:${Configure.read(`auth.secrets.${this.getModelName()}.table`)}`
             });
         } while (validate.fails());
-        this.#privateCore.set({ user_id, client_key, client_secret });
-        let data = await this.#privateCore.save();
+        this.#tableUsed.set({ user_id, client_key, client_secret });
+        let data = await this.#tableUsed.save();
         if (data) {
             return data;
         }
@@ -157,8 +162,8 @@ class Tokenable extends Model {
     }
 
     async getBearer(secret_id, name = 'bearer') {
-        this.#generatePrivateCore('bearer_tokens');
-        const bearerTable = this.#privateCore.tableName;
+        this.#setTableUsed('bearer_tokens');
+        const bearerTable = this.#tableUsed.tableName;
         const alias = this.getModelName();
         const bearerAlias = `${alias}Bearer`;
         const secretTable = Configure.read(`auth.secrets.${this.getModelName()}.table`);
@@ -199,19 +204,19 @@ class Tokenable extends Model {
     }
 
     async #createBearer(secret_id, name = 'bearer', expires_at = Configure.read('auth.token_expiration')) {
-        this.#generatePrivateCore('bearer_tokens');
+        this.#setTableUsed('bearer_tokens');
         let token;
         let validate;
         do {
             token = this.generateRandomToken(32);
             validate = await Validator.make({ token }, {
-                token: `unique:${this.#privateCore.tableName}`
+                token: `unique:${this.#tableUsed.tableName}`
             });
         }
         while (validate.fails());
         expires_at = this.getFutureDate(expires_at);
-        this.#privateCore.set({ secret_id, token, name, expires_at });
-        let data = await this.#privateCore.save();
+        this.#tableUsed.set({ secret_id, token, name, expires_at });
+        let data = await this.#tableUsed.save();
         return data ? token : false;
     }
 
@@ -227,7 +232,7 @@ class Tokenable extends Model {
         const secretAlias = `${alias}Secret`;
         const params = {};
         params['fields'] = [
-            `${alias}.*`
+            `${alias}.*`, `${bearerAlias}.id as bearer_id`
         ];
         params['conditions'] = {
             [`${bearerAlias}.token`]: ['=', bearer],
@@ -254,7 +259,51 @@ class Tokenable extends Model {
             }
         ];
         let data = await this.find('first', params);
-        return data ?? false;
+        if (!data) {
+            return false;
+        }
+        delete data.password;
+        return data;
+    }
+
+    async getUserSecret(user_id) {
+        this.#setTableUsed('secrets');
+        const params = {};
+        params['fields'] = [
+            'client_key', 'client_secret'
+        ];
+        params['conditions'] = {
+            user_id: ['=', user_id]
+        };
+
+        let data = await this.#tableUsed.find(params);
+        this.log(data, 'secret', 'test');
+        if (!data) {
+            await this.#createSecret(user_id);
+            return await this.getUserSecret(user_id);
+        }
+
+        return data;
+    }
+
+    async revokeBearer(id = null) {
+        if (!id) {
+            throw new Error('ID is required to revoke a bearer token');
+        }
+        this.#setTableUsed('bearer_tokens');
+        this.#tableUsed.set({ id: id });
+        this.#tableUsed.set({ is_revoked: 1 });
+        return await this.#tableUsed.save();
+    }
+
+    async revokeToken(id = null) {
+        if (!id) {
+            throw new Error('ID is required to revoke a token');
+        }
+        this.#setTableUsed('access_tokens');
+        this.#tableUsed.set({ id: id });
+        this.#tableUsed.set({ is_revoked: 1 });
+        return await this.#tableUsed.save();
     }
 }
 

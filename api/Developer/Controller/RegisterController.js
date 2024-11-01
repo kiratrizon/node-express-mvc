@@ -29,19 +29,14 @@ class RegisterController extends Controller {
     // Model
     let developerID = await this.Developer.create(data);
     if (developerID) {
-      if (await this.Developer.createSecret(developerID)) {
-        let mailer = new this.mailer();
-        await mailer.sendMail({
-          to: data.email,
-          subject: "Welcome",
-          header: "Account created successfully.",
-          content: "This is an example mailer."
-        });
-        return res.status(201).json({ error: false, message: `Developer created successfully.` });
-      } else {
-        await this.Developer.delete(developerID);
-        return res.status(403).json({ error: true, message: `Developer secret not created.`, old: req.body });
-      }
+      let mailer = new this.mailer();
+      await mailer.sendMail({
+        to: data.email,
+        subject: "Welcome",
+        header: "Account created successfully.",
+        content: "This is an example mailer."
+      });
+      return res.status(201).json({ error: false, message: `Developer created successfully.` });
     }
     return res.status(404).json({ error: true, message: `Developer not created.` });
   }
