@@ -1,0 +1,7 @@
+/node_modules/
+request.rest
+sessions
+.env
+github-recovery-codes.txt
+tmp
+.DS_Store
